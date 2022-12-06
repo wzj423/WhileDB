@@ -83,7 +83,9 @@ Proof.
   intros R1 R2 s1 l s2.
   rel_unfold.
   intros [? ?].
-Abort.
+  auto.
+Qed.
+(*Abort.*)
 
 Definition and_denote
              (D1 D2: int64 -> prog_state -> list event -> prog_state -> Prop)

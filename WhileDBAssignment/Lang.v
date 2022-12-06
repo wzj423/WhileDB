@@ -77,10 +77,10 @@ Definition malloc_action
              (s1: prog_state)
              (tr: list event)
              (s2: prog_state): Prop :=
-  exists k: Z,
+  exists k: Z, (*k: number of bytes(or Qwords?) allocated.*)
     k > 1 /\
     8 * (k - 1) < Int64.signed n1 <= 8 * k /\
-    (8 | Int64.signed n2) /\
+    (8 | Int64.signed n2) /\ (*Here it says that n2 can be evenly divided by 8*)
     Int64.signed n2 + 8 * k < Int64.max_signed /\
     tr = EV_Malloc n1 n2 :: nil /\
     (forall i,
