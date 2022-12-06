@@ -170,7 +170,9 @@ Lemma id_mono:
          `{POA: PartialOrder_Setoid A},
   mono (fun x => x).
 Proof.
-Admitted.
+unfold mono.
+intros. tauto.
+Qed.
 
 Lemma compose_mono:
   forall {A B C: Type}
@@ -181,7 +183,11 @@ Lemma compose_mono:
          (g: B -> C),
   mono f -> mono g -> mono (fun x => g (f x)).
 Proof.
-Admitted.
+unfold mono;intros.
+pose proof H a1 a2 H1.
+pose proof H0 (f a1) (f a2) H2.
+tauto.
+Qed.
 
 Lemma id_continuous:
   forall {A: Type}
@@ -189,7 +195,19 @@ Lemma id_continuous:
          {EquivA: Equivalence equiv},
   continuous (fun x => x).
 Proof.
-Admitted.
+unfold continuous;intros.
+(* pose proof oCPO_completeness l H. *)
+assert ((is_omega_ub l == is_omega_ub (fun n:nat => l n))%sets).
+{
+	unfold   is_omega_ub. reflexivity.
+}
+pose proof same_omega_ub_same_omega_lub' (l) (fun n:nat=> l n) H0 H.
+assert (increasing (fun n:nat=> l n)). {
+	unfold increasing.
+	unfold increasing in H. tauto.
+}
+pose proof H1 H2.
+tauto. Qed.
 
 Lemma increasing_mono_increasing:
   forall {A B: Type}
@@ -199,7 +217,12 @@ Lemma increasing_mono_increasing:
          (l: nat -> A),
   increasing l -> mono f -> increasing (fun n => f (l n)).
 Proof.
-Admitted.
+intros.
+unfold increasing. intros.
+unfold increasing in H. intros.
+unfold mono in H0.
+apply H0. apply H.
+Qed. 
 
 Lemma mono_equiv_congr:
   forall {A B: Type}
@@ -209,7 +232,22 @@ Lemma mono_equiv_congr:
          (f: A -> B),
   mono f -> Proper (equiv ==> equiv) f.
 Proof.
-Admitted.
+intros.
+unfold Proper.
+unfold respectful. intros.
+pose proof reflexivity_setoid x y H0.
+unfold mono in H.
+apply H in H1.
+pose proof reflexivity_setoid y x.
+assert (equiv y x).
+{
+	apply symmetry. tauto.
+}
+pose proof H2 H3.
+apply H in H4.
+pose proof antisymmetricity_setoid (f x) (f y) H1 H4.
+tauto.
+Qed. 
 
 Lemma compose_continuous:
   forall {A B C: Type}
@@ -226,7 +264,17 @@ Lemma compose_continuous:
   continuous g ->
   continuous (fun x => g (f x)).
 Proof.
-Admitted.
+unfold continuous;
+intros.
+pose proof H3.
+apply H1 in H3.
+pose proof mono_equiv_congr g H0.
+apply H5 in H3.
+pose proof increasing_mono_increasing f l H4 H.
+apply H2 in H6.
+rewrite H3.
+tauto.
+Qed.
 
 Lemma iter_bot_increasing:
   forall
