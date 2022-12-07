@@ -365,7 +365,30 @@ Definition while_denote
 (*TODO 1: 证明fun X是单调连续的
   TODO 2: 加上err和inf的指称语义（虽然不加也能证明小步语义就是了）*)
 
-
+(** 下面可以直接使用Bourbaki-Witt不动点定理证明上述定义就是我们要的最小不动点。*)
+Theorem while_denote_is_least_fix: forall D0 D,
+  ((test1(D0) ∘ D ∘ while_denote D0 D) ∪ test0(D0) == while_denote D0 D)%sets /\
+  (forall X, (test1(D0) ∘ D ∘ X) ∪ test0(D0) == X -> while_denote D0 D ⊆ X)%sets.
+Proof.
+  intros.
+  assert (mono (fun X => (test1(D0) ∘ D ∘ X) ∪ test0(D0)) /\
+          continuous (fun X => (test1(D0) ∘ D ∘ X) ∪ test0(D0))).
+  {
+    apply union_right2_mono_and_continuous.
+    apply Rels_concat_left_mono_and_continuous.
+    apply Rels_concat_left_mono_and_continuous.
+    split.
+    + apply id_mono.
+    + apply id_continuous.
+  }
+  destruct H.
+  split.
+  + apply (BW_LFix_is_fix (fun X => (test1(D0) ∘ D ∘ X) ∪ test0(D0)));
+      tauto.
+  + intros X.
+    apply (BW_LFix_is_least_fix (fun X => (test1(D0) ∘ D ∘ X) ∪ test0(D0)));
+      tauto.
+Qed.
 
 Definition write_int_action_denote (*Here the value assigned is an Int64 literal value. *)
              (n: int64)
