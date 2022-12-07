@@ -93,7 +93,19 @@ Definition and_denote
              (s1: prog_state)
              (tr: list event)
              (s2: prog_state): Prop
-. Admitted. (* 请删去这一行并自行补充定义，必要时可以添加辅助定义 *)
+:= (*1206暂定版本*) 
+  ((D1 (Int64.repr 0) s1 tr s2) /\ n = Int64.repr 0) \/
+  (exists n1,
+     ((D1 n1) ∘ (D2 (Int64.repr 0))) s1 tr s2 /\
+     Int64.signed n1 <> 0 /\
+     n = Int64.repr 0 ) \/
+  (exists n1 n2,
+     ((D1 n1) ∘ (D2 n2)) s1 tr s2 /\
+     Int64.signed n1 <> 0 /\
+     Int64.signed n2 <> 0 /\
+     n = Int64.repr 1 )
+.  
+ (* 请删去这一行并自行补充定义，必要时可以添加辅助定义 *)
 
 Definition or_denote
              (D1 D2: int64 -> prog_state -> list event -> prog_state -> Prop)
@@ -101,7 +113,19 @@ Definition or_denote
              (s1: prog_state)
              (tr: list event)
              (s2: prog_state): Prop
-. Admitted. (* 请删去这一行并自行补充定义，必要时可以添加辅助定义 *)
+             := (*1206暂定版本*) 
+  (exists n1,
+     (D1 n1) s1 tr s2 /\
+     Int64.signed n1 <> 0 /\
+     n = Int64.repr 1 ) \/
+  (exists n2,
+     ((D1 (Int64.repr 0)) ∘ (D2 n2)) s1 tr s2 /\
+     Int64.signed n2 <> 0 /\
+     n = Int64.repr 1 ) \/
+  (((D1 (Int64.repr 0)) ∘ (D2 (Int64.repr 0))) s1 tr s2 /\
+     n = Int64.repr 0 )
+.  
+(* 请删去这一行并自行补充定义，必要时可以添加辅助定义 *)
 
 Definition binop_denote
              (op: binop)
@@ -199,10 +223,10 @@ Fixpoint eeval (e : expr):
   | EReadChar => read_char_denote
   end.
 
-(** 表达式的指称是：prog_state -> list event -> prog_state -> Prop，表示起始状
+(** 表达式(这里应该是命令？)的指称是：prog_state -> list event -> prog_state -> Prop，表示起始状
     态、事件列表（时间序）、终止状态之间的三元关系。 *)
 
-Definition asgn_var_action_denote
+Definition asgn_var_action_denote (*Here the value assigned is an Int64 literal value. *)
              (X: var_name)
              (n: int64)
              (s1: prog_state)
@@ -213,7 +237,7 @@ Definition asgn_var_action_denote
   (forall Y, X <> Y -> s1.(vars) Y = s2.(vars) Y) /\
   (forall p, s1.(mem) p = s2.(mem) p).
 
-Definition asgn_var_denote
+Definition asgn_var_denote (* And here the value assigned comes from an expr('s denotational semantic)*)
              (X: var_name)
              (D: int64 -> prog_state -> list event -> prog_state -> Prop)
              (s1: prog_state)
@@ -265,21 +289,116 @@ Definition if_denote
   prog_state -> list event -> prog_state -> Prop :=
   (test1 D0 ∘ D1) ∪ (test0 D0 ∘ D2).
 
+  (*证明三元关系和subseteq构成一个偏序关系*)
+#[export] Instance R_while_fin {A B C: Type}: Order (A -> B -> C -> Prop) :=
+  Sets.included.
+#[export] Instance Equiv_while_fin {A B C: Type}: Equiv (A -> B -> C -> Prop) :=
+  Sets.equiv.
+#[export] Instance PO_while_fin {A B C: Type}: PartialOrder_Setoid (A -> B -> C -> Prop).
+Proof.
+  split.
+  + unfold Reflexive_Setoid.
+    unfold equiv, order_rel, R_while_fin, Equiv_while_fin; simpl.
+    sets_unfold; intros a b H x y z H0.
+    specialize (H x y z). unfold iff in H;destruct H;auto.
+  + unfold Transitive.
+    unfold equiv, order_rel, R_while_fin, Equiv_while_fin; simpl.
+    sets_unfold; intros a b c H H0 x y z.
+    specialize (H x y z);specialize (H0 x y z).
+    tauto.
+  + unfold AntiSymmetric_Setoid.
+    unfold equiv, order_rel, R_while_fin, Equiv_while_fin; simpl.
+    sets_unfold; intros a b H H0 x y z.
+    specialize (H x y z);specialize (H0 x y z).
+    tauto.
+Qed.
+(** 下面再定义上确界计算函数与完备偏序集中的最小值。*)
+#[export] Instance oLub_while_fin {A B C: Type}: OmegaLub (A -> B -> C-> Prop) :=
+  Sets.omega_union.
+
+#[export] Instance Bot_while_fin {A B C: Type}: Bot (A -> B-> C-> Prop) :=
+  ∅: A -> B -> C-> Prop.
+
+(** 下面证明这构成一个Omega完备偏序集。*)
+#[export] Instance oCPO_while_fin {A B C: Type}:
+  OmegaCompletePartialOrder_Setoid (A -> B -> C-> Prop).
+Proof.
+  split.
+  + apply PO_while_fin.
+  + unfold increasing, is_omega_lub, is_omega_ub, is_lb.
+    unfold omega_lub, order_rel, R_while_fin, oLub_while_fin; simpl.
+    sets_unfold; intros T H.
+    split.
+    - intros n x y z; intros.
+      exists n.
+      tauto.
+    - intros a H0 x y z H1.
+      destruct H1 as [n ?].
+      specialize (H0 n x y z).
+      tauto.
+  + unfold is_least.
+    unfold bot, order_rel, R_while_fin, Bot_while_fin; simpl.
+    sets_unfold; intros a.
+    tauto.
+Qed.
+
+(** 额外需要补充一点：_[Equiv_while_fin]_确实是一个等价关系。先前Bourbaki-Witt不
+    动点定理的证明中用到了这一前提。证明可见SetsDomain.v*)
+#[export] Instance Equiv_equiv_while_fin {A B C: Type}:
+  Equivalence (@equiv (A -> B -> C-> Prop) _).
+Proof.
+  (*Print Sets_equiv_equiv.*)
+  apply Sets_equiv_equiv.
+Qed.
+
+
 Definition while_denote
              (D0: int64 -> prog_state -> list event -> prog_state -> Prop)
              (D: prog_state -> list event -> prog_state -> Prop):
   prog_state -> list event -> prog_state -> Prop
-. Admitted. (* 请删去这一行并自行补充定义，必要时可以添加辅助定义 *)
+  :=
+ BW_LFix (fun X => (test1(D0) ∘ D ∘ X) ∪ test0(D0))(*Orginial solution*).
+   (* 请删去这一行并自行补充定义，必要时可以添加辅助定义 *)
+(*TODO 1: 证明fun X是单调连续的
+  TODO 2: 加上err和inf的指称语义（虽然不加也能证明小步语义就是了）*)
+
+
+
+Definition write_int_action_denote (*Here the value assigned is an Int64 literal value. *)
+             (n: int64)
+             (s1: prog_state)
+             (tr: list event)
+             (s2: prog_state): Prop :=
+  tr = EV_WriteInt n :: nil /\ s1 = s2.
+Definition write_int_denote_aux (*Here the value assigned is an Int64 literal value. *)
+             (D0: int64 -> prog_state -> list event -> prog_state -> Prop)
+             (s1: prog_state)
+             (tr: list event)
+             (s2: prog_state): Prop :=
+  exists n, ( (D0 n) ∘ (write_int_action_denote n) ) s1 tr s2.
 
 Definition write_int_denote
              (D0: int64 -> prog_state -> list event -> prog_state -> Prop):
-  prog_state -> list event -> prog_state -> Prop
-. Admitted. (* 请删去这一行并自行补充定义，必要时可以添加辅助定义 *)
+  prog_state -> list event -> prog_state -> Prop :=
+  write_int_denote_aux D0.
+  (* 请删去这一行并自行补充定义，必要时可以添加辅助定义 *)
 
+Definition write_char_action_denote (*Here the value assigned is an Int64 literal value. *)
+             (n: int64)
+             (s1: prog_state)
+             (tr: list event)
+             (s2: prog_state): Prop :=
+  tr = EV_WriteChar n :: nil /\ s1 = s2.
+Definition write_char_denote_aux (*Here the value assigned is an Int64 literal value. *)
+             (D0: int64 -> prog_state -> list event -> prog_state -> Prop)
+             (s1: prog_state)
+             (tr: list event)
+             (s2: prog_state): Prop :=
+  exists n, ( (D0 n) ∘ (write_char_action_denote n) ) s1 tr s2.
 Definition write_char_denote
              (D0: int64 -> prog_state -> list event -> prog_state -> Prop):
-  prog_state -> list event -> prog_state -> Prop
-. Admitted. (* 请删去这一行并自行补充定义，必要时可以添加辅助定义 *)
+  prog_state -> list event -> prog_state -> Prop:=
+  write_char_denote_aux D0. (* 请删去这一行并自行补充定义，必要时可以添加辅助定义 *)
 
 Fixpoint ceval (c: com): prog_state -> list event -> prog_state -> Prop :=
   match c with

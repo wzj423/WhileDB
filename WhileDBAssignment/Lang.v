@@ -73,7 +73,7 @@ Definition cmp_compute
     n = if Int64.cmp c n1 n2 then Int64.repr 1 else Int64.repr 0.
 
 Definition malloc_action
-             (n1 n2: int64)
+             (n1 n2: int64) (*malloc n1 bytes on addr n2, 8byte aligned.*)
              (s1: prog_state)
              (tr: list event)
              (s2: prog_state): Prop :=
