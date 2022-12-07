@@ -15,6 +15,8 @@ Local Open Scope bool.
 Local Open Scope Z.
 Local Open Scope sets.
 
+Require Import WhileDB.BWFixAuxProofs.
+
 (** 表达式的指称是：int64 -> prog_state -> list event -> prog_state -> Prop，表
     示返回值、起始状态、事件列表（时间序）、终止状态之间的四元关系。 *)
 
@@ -289,7 +291,8 @@ Definition if_denote
   prog_state -> list event -> prog_state -> Prop :=
   (test1 D0 ∘ D1) ∪ (test0 D0 ∘ D2).
 
-  (*证明三元关系和subseteq构成一个偏序关系*)
+  (*我尝试把下面部分内容放在BWFixAuxProofs.v里面,这样可以看起来更加简洁一点*)
+(*  (*证明三元关系和subseteq构成一个偏序关系*)
 #[export] Instance R_while_fin {A B C: Type}: Order (A -> B -> C -> Prop) :=
   Sets.included.
 #[export] Instance Equiv_while_fin {A B C: Type}: Equiv (A -> B -> C -> Prop) :=
@@ -349,7 +352,7 @@ Qed.
 Proof.
   (*Print Sets_equiv_equiv.*)
   apply Sets_equiv_equiv.
-Qed.
+Qed.*)
 
 
 Definition while_denote
