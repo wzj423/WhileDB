@@ -219,3 +219,5 @@ Proof.
   + exact (compose_mono f _ H H1).
   + exact (compose_continuous f _ H H1 H0 H2).
 Qed.
+
+(* ===================== Prepare for err ==========================*)

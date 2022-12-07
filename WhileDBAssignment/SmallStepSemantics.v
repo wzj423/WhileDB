@@ -1,4 +1,5 @@
 Require Import Coq.ZArith.ZArith.
+Require Import Coq.Lists.List.
 Require Import compcert.lib.Integers.
 Require Import WhileDB.SetsDomain.
 Require Import WhileDB.Lang.
@@ -171,6 +172,130 @@ Inductive estep:
     estep (el1, s1) tr (el2, s2) ->
     estep (EL_Cont el1 k, s1) tr (EL_Cont el2 k, s2).
 
-Inductive cstep:
+
+Check (EV_ReadInt (Int64.repr 3) :: nil).
+
+  (** 尝试1207**)
+(*Inductive cstep:
   com_loc * prog_state -> list event -> com_loc * prog_state -> Prop :=
-. Goal False. admit. Abort. (* 请删去这一行并自行补充定义，必要时可以添加辅助定义 *)
+. Goal False. admit. Abort. (* 请删去这一行并自行补充定义，必要时可以添加辅助定义 *)*)
+
+
+Inductive cstep:
+  com_loc * prog_state -> list event-> com_loc * prog_state -> Prop :=
+| CS_AsgnVar: forall s x e,
+    cstep
+      (CL_FocusedCom (CAss (EVar x) e), s)
+      nil
+      (CL_ECont (EL_FocusedExpr e) (KAsgnVar x), s)
+| CS_AsgnVarStep: forall s1 s2 x n,
+    s2.(vars) x = n ->
+    (forall y, x <> y -> s1.(vars) y = s2.(vars) y) ->
+    (forall p, s1.(mem) p = s2.(mem) p) ->
+    cstep
+      (CL_ECont (EL_Value n) (KAsgnVar x), s1)
+      nil
+      (CL_Finished, s2)
+
+| CS_AsgnMemL: forall s e1 e2,
+    cstep
+      (CL_FocusedCom (CAss (EDeref e1) e2), s)
+      nil
+      (CL_ECont (EL_FocusedExpr e1) (KAsgnMemL e2), s)
+| CS_AsgnMemR: forall s n1 e2,
+    cstep
+      (CL_ECont (EL_Value n1) (KAsgnMemL e2), s)
+      nil
+      (CL_ECont (EL_FocusedExpr e2) (KAsgnMemR n1), s)
+| CS_AsgnMemStep: forall s1 s2 n1 n2,
+    s1.(mem) n1 <> None ->
+    s2.(mem) n1 = Some n2 ->
+    (forall x, s1.(vars) x = s2.(vars) x) ->
+    (forall p, n1 <> p -> s1.(mem) p = s2.(mem) p) ->
+    cstep
+      (CL_ECont (EL_Value n2) (KAsgnMemR n1), s1)
+      nil
+      (CL_Finished, s2)
+
+| CS_Seq: forall s c1 c2,
+    cstep
+      (CL_FocusedCom (CSeq c1 c2), s)
+      nil
+      (CL_CCont (CL_FocusedCom c1) (KSeq c2), s)
+| CS_SeqStep: forall s c,
+    cstep
+      (CL_CCont CL_Finished (KSeq c), s)
+      nil
+      (CL_FocusedCom c, s)
+
+| CS_If: forall s e c1 c2,
+    cstep
+      (CL_FocusedCom (CIf e c1 c2), s)
+      nil
+      (CL_ECont (EL_FocusedExpr e) (KIf c1 c2), s)
+| CS_IfStepTrue: forall s n c1 c2,
+    Int64.signed n <> 0 ->
+    cstep
+      (CL_ECont (EL_Value n) (KIf c1 c2), s)
+      nil
+      (CL_FocusedCom c1, s)
+| CS_IfStepFalse: forall s n c1 c2,
+    n = Int64.repr 0 ->
+    cstep
+      (CL_ECont (EL_Value n) (KIf c1 c2), s)
+      nil
+      (CL_FocusedCom c2, s)
+
+| CS_WhileBegin: forall s e c,
+    cstep
+      (CL_FocusedCom (CWhile e c), s)
+      nil
+      (CL_ECont (EL_FocusedExpr e) (KWhileCond e c), s)
+| CS_WhileStepTrue: forall s n e c,
+    Int64.signed n <> 0 ->
+    cstep
+      (CL_ECont (EL_Value n) (KWhileCond e c), s)
+      nil
+      (CL_CCont (CL_FocusedCom c) (KWhileBody e c), s)
+| CS_WhileStepFalse: forall s n e c,
+    n = Int64.repr 0 ->
+    cstep
+      (CL_ECont (EL_Value n) (KWhileCond e c), s)
+      nil
+      (CL_Finished, s)
+| CS_WhileRestart: forall s e c,
+    cstep
+      (CL_CCont CL_Finished (KWhileBody e c), s)
+      nil
+      (CL_ECont (EL_FocusedExpr e) (KWhileCond e c), s)
+
+  (*上面的都没有太大问题，关键在于下面*)
+| CS_WriteInt: forall s e,
+    cstep
+      (CL_FocusedCom (CWriteInt e), s)
+      nil
+      (CL_ECont (EL_FocusedExpr e) (KWriteInt), s)
+| CS_WriteIntStep: forall s n,
+   cstep
+   (CL_ECont (EL_Value n) (KWriteInt), s)
+      (EV_WriteInt n :: nil)
+    (CL_Finished, s)
+    
+| CS_WriteChar: forall s e,
+    cstep
+      (CL_FocusedCom (CWriteChar e), s)
+      nil
+      (CL_ECont (EL_FocusedExpr e) (KWriteChar), s)
+| CS_WriteCharStep: forall s n,
+	cstep
+    (CL_ECont (EL_Value n) (KWriteChar), s)
+      ((EV_WriteChar n) :: nil)
+    (CL_Finished, s)
+
+| CS_ECont: forall el1 el2 s1 s2 k tr,
+    estep (el1,s1) tr (el2,s2) ->
+    cstep (CL_ECont el1 k, s1) tr (CL_ECont el2 k, s2)
+| CS_CCont: forall cl1 s1 cl2 s2 k tr,
+    cstep (cl1, s1) tr (cl2, s2) ->
+    cstep (CL_CCont cl1 k, s1) tr (CL_CCont cl2 k, s2).
+    (*上下两边都是从el1->el2 或者cl1->cl2， 那么两边经历的时间应当是一样的   *)
