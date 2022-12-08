@@ -2,7 +2,10 @@ Require Import Coq.ZArith.ZArith.
 Require Import Coq.Lists.List.
 Require Import compcert.lib.Integers.
 Require Import WhileDB.SetsDomain.
+Require Import WhileDB.RelDomain.
+Require Import WhileDB.RelDomainAuxProofs.
 Require Import WhileDB.Lang.
+Require Import Lia.
 Local Open Scope Z.
 Local Open Scope sets_scope.
 
@@ -299,3 +302,149 @@ Inductive cstep:
     cstep (cl1, s1) tr (cl2, s2) ->
     cstep (CL_CCont cl1 k, s1) tr (CL_CCont cl2 k, s2).
     (*上下两边都是从el1->el2 或者cl1->cl2， 那么两边经历的时间应当是一样的   *)
+
+
+(** Coq中定义多步关系 *)
+Definition multi_estep :
+  (expr_loc * prog_state) -> list event -> (expr_loc * prog_state) -> Prop :=
+  clos_refl_trans estep.
+Definition multi_cstep:
+  com_loc * prog_state -> list event -> com_loc * prog_state -> Prop :=
+  clos_refl_trans cstep.
+
+(** 多步关系的基本性质 *)
+Lemma MES_Cont: forall s1 s2 el1 el2 tr k,
+  multi_estep (el1,s1) tr (el2,s2) ->
+  multi_estep ((EL_Cont el1 k),s1) tr ((EL_Cont el2 k),s2).
+Proof.
+  intros.
+  pose proof nsteps_1_self estep.
+  assert(forall s1 s2 el1 el2 tr k, nsteps estep (S O) (el1,s1) tr (el2,s2) ->
+  nsteps estep (S O) ((EL_Cont el1 k),s1) tr ((EL_Cont el2 k),s2) ).
+  {
+    intros. apply H0. apply H0 in H1. apply ES_Cont. auto.
+  }
+  assert (forall n tr el1 s1 el2 s2 k, nsteps estep n (el1, s1) tr (el2, s2) -> nsteps estep n (EL_Cont el1 k, s1) tr (EL_Cont el2 k, s2) ).
+  {
+    induction n.
+    {
+      unfold nsteps. simpl. sets_unfold;rel_unfold;sets_unfold;rel_unfold.
+      intros;destruct H2.
+      split;auto.
+      inversion H3.
+      injection H3.
+      intros. congruence.
+    }
+    intros.
+    assert( ((S n)%nat > O)%nat). lia.
+    epose proof nsteps_1n estep (S n) (el0,s0) (el3,s3) tr0 H3 H2.
+    destruct H4 as[? [? [? [? [? ?]]]]].
+    assert ( ((S n)-1 = n)%nat). lia.
+    rewrite H7 in H6. clear H7.
+    destruct x1 as (el4,x4).
+    specialize ( IHn x0 el4 x4 el3 s3 k0 H6).
+    specialize (H1 s0 x4 el0 el4 x k).
+   pose proof nsteps_1_self estep.
+(*    assert( nsteps estep 1 (el0, s0) x (el4, x4)  ). { apply H7. apply H5. }
+ 	apply H1 in H8. *)
+ 	eapply nsteps_1n_rev.
+ 	+ auto.
+ 	+ exists x,x0,(EL_Cont el4 k0,x4). repeat split;auto. eapply ES_Cont;eauto.
+ 	assert ( ((S n - 1)=n)%nat). lia. rewrite H8. auto.
+ 	}
+ 	revert H.
+	unfold multi_estep. unfold clos_refl_trans.
+	sets_unfold. intros. destruct H. exists x. eapply H2 in H;eauto.
+Qed.
+
+
+
+Lemma MCS_ECont: forall s1 s2 tr el1 el2 k,
+  multi_estep (el1,s1) tr (el2,s2) ->
+  multi_cstep (CL_ECont el1 k, s1) tr (CL_ECont el2 k, s2).
+Proof.
+  intros.
+  pose proof nsteps_1_self cstep.
+  pose proof nsteps_1_self estep as HH0.
+  assert(forall s1 s2 el1 el2 tr k, nsteps estep (S O) (el1,s1) tr (el2,s2) ->
+  nsteps cstep (S O) ((CL_ECont el1 k),s1) tr ((CL_ECont el2 k),s2) ).
+  {
+    intros. apply H0. apply HH0 in H1. apply CS_ECont. auto.
+  }
+  assert (forall n tr el1 s1 el2 s2 k, nsteps estep n (el1, s1) tr (el2, s2) -> nsteps cstep n (CL_ECont el1 k, s1) tr (CL_ECont el2 k, s2) ).
+  {
+    induction n.
+    {
+      unfold nsteps. simpl. sets_unfold;rel_unfold;sets_unfold;rel_unfold.
+      intros;destruct H2.
+      split;auto.
+      inversion H3.
+      injection H3.
+      intros. congruence.
+    }
+    intros.
+    assert( ((S n)%nat > O)%nat). lia.
+    epose proof nsteps_1n estep (S n) (el0,s0) (el3,s3) tr0 H3 H2.
+    destruct H4 as[? [? [? [? [? ?]]]]].
+    assert ( ((S n)-1 = n)%nat). lia.
+    rewrite H7 in H6. clear H7.
+    destruct x1 as (el4,x4).
+    specialize ( IHn x0 el4 x4 el3 s3 k0 H6).
+    specialize (H1 s0 x4 el0 el4 x k).
+   pose proof nsteps_1_self estep.
+(*    assert( nsteps estep 1 (el0, s0) x (el4, x4)  ). { apply H7. apply H5. }
+ 	apply H1 in H8. *)
+ 	eapply nsteps_1n_rev.
+ 	+ auto.
+ 	+ exists x,x0,(CL_ECont el4 k0,x4). repeat split;auto. eapply CS_ECont;eauto.
+ 	assert ( ((S n - 1)=n)%nat). lia. rewrite H8. auto.
+ 	}
+ 	revert H.
+	unfold multi_estep. unfold clos_refl_trans.
+	sets_unfold. intros. destruct H. exists x. eapply H2 in H;eauto.
+Qed.
+
+Lemma MCS_CCont: forall cl1 s1 cl2 s2 k tr,
+  multi_cstep (cl1, s1) tr (cl2, s2) ->
+  multi_cstep (CL_CCont cl1 k, s1) tr (CL_CCont cl2 k, s2).
+Proof.
+  intros.
+  pose proof nsteps_1_self cstep.
+  pose proof nsteps_1_self estep as HH0.
+  assert(forall s1 s2 el1 el2 tr k, nsteps cstep (S O) (el1,s1) tr (el2,s2) ->
+  nsteps cstep (S O) ((CL_CCont el1 k),s1) tr ((CL_CCont el2 k),s2) ).
+  {
+    intros. apply H0. apply H0 in H1. apply  CS_CCont. auto.
+  }
+  assert (forall n tr el1 s1 el2 s2 k, nsteps cstep n (el1, s1) tr (el2, s2) -> nsteps cstep n (CL_CCont el1 k, s1) tr (CL_CCont el2 k, s2) ).
+  {
+    induction n.
+    {
+      unfold nsteps. simpl. sets_unfold;rel_unfold;sets_unfold;rel_unfold.
+      intros;destruct H2.
+      split;auto.
+      inversion H3.
+      injection H3.
+      intros. congruence.
+    }
+    intros.    
+    assert( ((S n)%nat > O)%nat). lia.
+    epose proof nsteps_1n cstep (S n) (el1,s0) (el2,s3) tr0 H3 H2.
+    destruct H4 as[? [? [? [? [? ?]]]]].
+    assert ( ((S n)-1 = n)%nat). lia.
+    rewrite H7 in H6. clear H7.
+    destruct x1 as (el4,x4).
+    specialize ( IHn x0 el4 x4 el2 s3 k0 H6).
+    specialize (H1 s0 x4 el1 el4 x k).
+   pose proof nsteps_1_self estep.
+(*    assert( nsteps estep 1 (el0, s0) x (el4, x4)  ). { apply H7. apply H5. }
+ 	apply H1 in H8. *)
+ 	eapply nsteps_1n_rev.
+ 	+ auto.
+ 	+ exists x,x0,(CL_CCont el4 k0,x4). repeat split;auto. eapply CS_CCont;eauto.
+ 	assert ( ((S n - 1)=n)%nat). lia. rewrite H8. auto.
+ 	}
+ 	revert H.
+	unfold multi_estep. unfold clos_refl_trans.
+	sets_unfold. intros. destruct H. exists x. eapply H2 in H;eauto.
+Qed.

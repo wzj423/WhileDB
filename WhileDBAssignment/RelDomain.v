@@ -1449,7 +1449,9 @@ Goal forall a1 a2 l b1 b2,
   msteps (a1, a2) l (b1, b2).
 Proof.
   intros.
-Abort.
+  tauto.
+Qed.
+
 
 End test.
 
