@@ -4,6 +4,7 @@ Require Import compcert.lib.Integers.
 Require Import WhileDB.SetsDomain.
 Require Import WhileDB.RelDomain.
 Require Import WhileDB.RelDomainAuxProofs.
+Require Import WhileDB.DenotationalSemantics.
 Require Import WhileDB.Lang.
 Require Import Lia.
 Local Open Scope Z.
@@ -345,7 +346,7 @@ Proof.
     specialize ( IHn x0 el4 x4 el3 s3 k0 H6).
     specialize (H1 s0 x4 el0 el4 x k).
    pose proof nsteps_1_self estep.
-(*    assert( nsteps estep 1 (el0, s0) x (el4, x4)  ). { apply H7. apply H5. }
+  (*    assert( nsteps estep 1 (el0, s0) x (el4, x4)  ). { apply H7. apply H5. }
  	apply H1 in H8. *)
  	eapply nsteps_1n_rev.
  	+ auto.
@@ -447,4 +448,281 @@ Proof.
  	revert H.
 	unfold multi_estep. unfold clos_refl_trans.
 	sets_unfold. intros. destruct H. exists x. eapply H2 in H;eauto.
+Qed.
+
+
+Lemma eeval_multi_estep: forall e n s1 s2 tr,
+  eeval e n s1 tr s2 ->
+  multi_estep (EL_FocusedExpr e,s1) tr (EL_Value n,s2).
+
+Proof.
+  intros.
+  revert n H; induction e; simpl; intros.
+  + unfold const_denote in H.
+  	transitivity_1n_General.
+    exists ((EL_Value (Int64.repr n), s1)),nil,nil.
+    destruct H as [? [? [? [? ?]]]].
+    repeat split;auto.
+    constructor;auto.
+    subst n0.
+    subst s2.
+    apply rt_refl_concrete.
+  + unfold var_denote in H.
+  	destruct H as [? [? ?]].
+    subst n tr  s1.
+  	transitivity_1n_General.
+  	exists (EL_Value (vars s2 x), s2),nil,nil.
+  	repeat split;simpl.
+  	constructor.
+    apply rt_refl_concrete.
+  + destruct op; simpl in H.
+    - 
+     etransitivity_1n; [eapply app_nil_l |constructor |]. (*用app_nil_l解决多出来的分支问题*)
+      unfold or_denote in H.
+      destruct H as [? | [? | ?] ].
+      * destruct H as [n1 [? [? ?] ] ].
+        specialize (IHe1 _ H).
+
+        (* Not refined below, further debugging needed.**)
+        etransitivity; [apply MES_Cont, IHe1 |].
+        etransitivity_1n; [| reflexivity].
+        apply ES_BinopR_SC.
+        simpl.
+        tauto.
+      * destruct H as [n2 [? [? [? ?] ] ] ].
+        specialize (IHe1 _ H).
+        specialize (IHe2 _ H0).
+        etransitivity; [apply MES_Cont, IHe1 |].
+        etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
+        etransitivity; [apply MES_Cont, IHe2 |].
+        etransitivity_1n; [| reflexivity].
+        constructor.
+        simpl.
+        unfold bool_compute.
+        tauto.
+      * destruct H as [? [? ?] ].
+        specialize (IHe1 _ H).
+        specialize (IHe2 _ H0).
+        etransitivity; [apply MES_Cont, IHe1 |].
+        etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
+        etransitivity; [apply MES_Cont, IHe2 |].
+        etransitivity_1n; [| reflexivity].
+        constructor.
+        simpl.
+        unfold bool_compute.
+        tauto.
+    - etransitivity_1n; [constructor |].
+      unfold or_denote in H.
+      destruct H as [? | [? | ?] ].
+      * destruct H as [? ?].
+        specialize (IHe1 _ H).
+        etransitivity; [apply MES_Cont, IHe1 |].
+        etransitivity_1n; [| reflexivity].
+        apply ES_BinopR_SC.
+        simpl.
+        tauto.
+      * destruct H as [n1 [? [? [? ?] ] ] ].
+        specialize (IHe1 _ H).
+        specialize (IHe2 _ H0).
+        etransitivity; [apply MES_Cont, IHe1 |].
+        etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
+        etransitivity; [apply MES_Cont, IHe2 |].
+        etransitivity_1n; [| reflexivity].
+        constructor.
+        simpl.
+        unfold bool_compute.
+        tauto.
+      * destruct H as [n1 [n2 [? [? [? [? ?] ] ] ] ] ].
+        specialize (IHe1 _ H).
+        specialize (IHe2 _ H0).
+        etransitivity; [apply MES_Cont, IHe1 |].
+        etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
+        etransitivity; [apply MES_Cont, IHe2 |].
+        etransitivity_1n; [| reflexivity].
+        constructor.
+        simpl.
+        unfold bool_compute.
+        tauto.
+    - unfold cmp_denote in H.
+      destruct H as [n1 [n2 [? [? ?] ] ] ].
+      specialize (IHe1 _ H).
+      specialize (IHe2 _ H0).
+      etransitivity_1n; [constructor |].
+      etransitivity; [apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity; [apply MES_Cont, IHe2 |].
+      etransitivity_1n; [| reflexivity].
+      constructor.
+      simpl.
+      unfold cmp_compute.
+      tauto.
+    - unfold cmp_denote in H.
+      destruct H as [n1 [n2 [? [? ?] ] ] ].
+      specialize (IHe1 _ H).
+      specialize (IHe2 _ H0).
+      etransitivity_1n; [constructor |].
+      etransitivity; [apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity; [apply MES_Cont, IHe2 |].
+      etransitivity_1n; [| reflexivity].
+      constructor.
+      simpl.
+      unfold cmp_compute.
+      tauto.
+    - unfold cmp_denote in H.
+      destruct H as [n1 [n2 [? [? ?] ] ] ].
+      specialize (IHe1 _ H).
+      specialize (IHe2 _ H0).
+      etransitivity_1n; [constructor |].
+      etransitivity; [apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity; [apply MES_Cont, IHe2 |].
+      etransitivity_1n; [| reflexivity].
+      constructor.
+      simpl.
+      unfold cmp_compute.
+      tauto.
+    - unfold cmp_denote in H.
+      destruct H as [n1 [n2 [? [? ?] ] ] ].
+      specialize (IHe1 _ H).
+      specialize (IHe2 _ H0).
+      etransitivity_1n; [constructor |].
+      etransitivity; [apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity; [apply MES_Cont, IHe2 |].
+      etransitivity_1n; [| reflexivity].
+      constructor.
+      simpl.
+      unfold cmp_compute.
+      tauto.
+    - unfold cmp_denote in H.
+      destruct H as [n1 [n2 [? [? ?] ] ] ].
+      specialize (IHe1 _ H).
+      specialize (IHe2 _ H0).
+      etransitivity_1n; [constructor |].
+      etransitivity; [apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity; [apply MES_Cont, IHe2 |].
+      etransitivity_1n; [| reflexivity].
+      constructor.
+      simpl.
+      unfold cmp_compute.
+      tauto.
+    - unfold cmp_denote in H.
+      destruct H as [n1 [n2 [? [? ?] ] ] ].
+      specialize (IHe1 _ H).
+      specialize (IHe2 _ H0).
+      etransitivity_1n; [constructor |].
+      etransitivity; [apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity; [apply MES_Cont, IHe2 |].
+      etransitivity_1n; [| reflexivity].
+      constructor.
+      simpl.
+      unfold cmp_compute.
+      tauto.
+    - unfold arith_denote1 in H.
+      destruct H as [n1 [n2 [? [? [? [? ?] ] ] ] ] ].
+      specialize (IHe1 _ H).
+      specialize (IHe2 _ H0).
+      etransitivity_1n; [constructor |].
+      etransitivity; [apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity; [apply MES_Cont, IHe2 |].
+      etransitivity_1n; [| reflexivity].
+      constructor.
+      simpl.
+      unfold arith_compute1.
+      tauto.
+    - unfold arith_denote1 in H.
+      destruct H as [n1 [n2 [? [? [? [? ?] ] ] ] ] ].
+      specialize (IHe1 _ H).
+      specialize (IHe2 _ H0).
+      etransitivity_1n; [constructor |].
+      etransitivity; [apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity; [apply MES_Cont, IHe2 |].
+      etransitivity_1n; [| reflexivity].
+      constructor.
+      simpl.
+      unfold arith_compute1.
+      tauto.
+    - unfold arith_denote1 in H.
+      destruct H as [n1 [n2 [? [? [? [? ?] ] ] ] ] ].
+      specialize (IHe1 _ H).
+      specialize (IHe2 _ H0).
+      etransitivity_1n; [constructor |].
+      etransitivity; [apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity; [apply MES_Cont, IHe2 |].
+      etransitivity_1n; [| reflexivity].
+      constructor.
+      simpl.
+      unfold arith_compute1.
+      tauto.
+    - unfold arith_denote2 in H.
+      destruct H as [n1 [n2 [? [? [? [? ?] ] ] ] ] ].
+      specialize (IHe1 _ H).
+      specialize (IHe2 _ H0).
+      etransitivity_1n; [constructor |].
+      etransitivity; [apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity; [apply MES_Cont, IHe2 |].
+      etransitivity_1n; [| reflexivity].
+      constructor.
+      simpl.
+      unfold arith_compute2.
+      tauto.
+    - unfold arith_denote2 in H.
+      destruct H as [n1 [n2 [? [? [? [? ?] ] ] ] ] ].
+      specialize (IHe1 _ H).
+      specialize (IHe2 _ H0).
+      etransitivity_1n; [constructor |].
+      etransitivity; [apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity; [apply MES_Cont, IHe2 |].
+      etransitivity_1n; [| reflexivity].
+      constructor.
+      simpl.
+      unfold arith_compute2.
+      tauto.
+  + destruct op; simpl in H.
+    - unfold not_denote in H.
+      destruct H as [H | H].
+      * destruct H as [n0 [? [? ? ] ] ].
+        specialize (IHe _ H).
+        etransitivity_1n; [constructor |].
+        etransitivity; [apply MES_Cont, IHe |].
+        etransitivity_1n; [| reflexivity].
+        constructor.
+        simpl.
+        unfold not_compute.
+        tauto.
+      * destruct H as [? ?].
+        specialize (IHe _ H).
+        etransitivity_1n; [constructor |].
+        etransitivity; [apply MES_Cont, IHe |].
+        etransitivity_1n; [| reflexivity].
+        constructor.
+        simpl.
+        unfold not_compute.
+        tauto.
+    - unfold neg_denote in H.
+      destruct H as [n0 [? [? ? ] ] ].
+      specialize (IHe _ H).
+      etransitivity_1n; [constructor |].
+      etransitivity; [apply MES_Cont, IHe |].
+      etransitivity_1n; [| reflexivity].
+      constructor.
+      simpl.
+      unfold neg_compute.
+      tauto.
+  + unfold deref_denote in H.
+    destruct H as [n0 [? ?] ].
+    specialize (IHe _ H).
+    etransitivity_1n; [constructor |].
+    etransitivity; [apply MES_Cont, IHe |].
+    etransitivity_1n; [| reflexivity].
+    constructor.
+    tauto.
 Qed.

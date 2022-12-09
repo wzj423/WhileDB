@@ -95,31 +95,6 @@ Proof.
 intros. 
 simpl. apply Rel_concat_id_r.
 Qed.
-Lemma rt_step:
-  forall
-    {X: Type}
-    {_RELS: Rels.RELS X X X}
-    {_RELS_Id: Rels.RELS_ID X}
-    {_SETS: Sets.SETS X}
-    {_RELS_Properties: RELS_Properties X X X}
-    {_RELS_Assoc: RELS_Assoc X X X X X X}
-    {_RELS_LeftId: RELS_LeftId X X}
-    {_RELS_RightId: RELS_RightId X X}
-    {_SETS_Properties: SETS_Properties X}
-    (x: X),
-    Sets.included
-      x
-      (clos_refl_trans x).
-Proof.
-  intros.
-  unfold clos_refl_trans.
-  unfold Sets.omega_union.
-  pose proof Sets_included_indexed_union nat (nsteps x) (S O).
-  simpl in H.
-  pose proof Rel_concat_id_r x.
-  apply Sets_equiv_Sets_included in H0;destruct H0.
-  transitivity( x ∘ Rels.id);auto.
-Qed.
 
 Lemma nsteps_1n:
 forall 
@@ -182,6 +157,52 @@ pose proof Sets_included_indexed_union nat (nsteps x) O.
 simpl in H. auto.
 Qed.
 
+Lemma rt_refl_concrete:
+forall
+  {A B: Type}
+  (x: A->list B-> A->Prop)
+  (a: A),
+    (clos_refl_trans x a nil a).
+Proof.
+intros.
+rel_unfold.
+unfold clos_refl_trans.
+unfold Sets.omega_union.
+sets_unfold;rel_unfold.
+exists O.
+pose proof nsteps_O_id x.
+unfold nsteps.
+simpl.
+sets_unfold.
+auto.
+Qed.
+
+Lemma rt_step:
+  forall
+    {X: Type}
+    {_RELS: Rels.RELS X X X}
+    {_RELS_Id: Rels.RELS_ID X}
+    {_SETS: Sets.SETS X}
+    {_RELS_Properties: RELS_Properties X X X}
+    {_RELS_Assoc: RELS_Assoc X X X X X X}
+    {_RELS_LeftId: RELS_LeftId X X}
+    {_RELS_RightId: RELS_RightId X X}
+    {_SETS_Properties: SETS_Properties X}
+    (x: X),
+    Sets.included
+      x
+      (clos_refl_trans x).
+Proof.
+  intros.
+  unfold clos_refl_trans.
+  unfold Sets.omega_union.
+  pose proof Sets_included_indexed_union nat (nsteps x) (S O).
+  simpl in H.
+  pose proof Rel_concat_id_r x.
+  apply Sets_equiv_Sets_included in H0;destruct H0.
+  transitivity( x ∘ Rels.id);auto.
+Qed.
+
 Lemma in_included:
 forall     {A:Type}(a:A)
   (*{_SETS: Sets.SETS (A->Prop)}*) (*为什么这里加上这一句之后sets_unfold就失效了？*)
@@ -206,10 +227,9 @@ Qed.
 
 Lemma indexed_union_include_index_iff:
 forall     {A:Type}
-  (a:A)
-  (xs:nat-> (A->Prop))
-  (n:nat),
-  Sets.In a (Sets.indexed_union xs) <-> exists n, xs n a.
+  (xs:nat-> A->Prop)
+  (a:A),
+  Sets.In a (Sets.indexed_union xs) <-> exists n:nat, xs n a.
 Proof.
 unfold iff.
 sets_unfold.
@@ -217,4 +237,30 @@ intros. split;
 sets_unfold;auto.
 Qed.   
 
+Lemma rt_trans_concrete:
+  forall
+  {A B: Type}
+  (x: A->list B-> A->Prop)
+  (a c d: A) (b1 b2 b12:list B),
+    (clos_refl_trans x a b1 c) 
+      -> (clos_refl_trans x c b2 d)
+      -> b12 = b1++b2
+      -> (clos_refl_trans x a b12 d).
+Proof.
+  intros.
+  revert H H0.
+  unfold clos_refl_trans.
+  unfold Sets.omega_union.
+  sets_unfold.
+  sets_unfold.
+  intros. destruct H. destruct H0.
+  pose proof nsteps_n_m x x0 x1.
+  assert(nsteps x (x0 + x1) ==nsteps x x0 ∘ nsteps x x1 ). rewrite H2. reflexivity.
+  exists (x0+x1)%nat.
+  epose proof 
+    Rel_Concat_element_concat2 (nsteps x x0)
+    (nsteps x x1) (nsteps x (x0+x1)%nat) a c d b1 b2 b12 
+    H H0 H1 H3.
+  apply H4.
+Qed.
 
