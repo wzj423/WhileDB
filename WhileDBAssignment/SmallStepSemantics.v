@@ -169,7 +169,7 @@ Inductive estep:
       (EL_Value n, s)
 | ES_ReadCharStep: forall n s,
     estep
-      (EL_FocusedExpr EReadInt, s)
+      (EL_FocusedExpr EReadChar, s)
       (EV_ReadChar n :: nil)
       (EL_Value n, s)
 | ES_Cont: forall el1 s1 tr el2 s2 k,
@@ -525,218 +525,321 @@ Proof.
         tauto.
         }
         (* Not revised below, further debugging needed.**)
-    - etransitivity_1n; [constructor |].
-      unfold or_denote in H.
+    - etransitivity_1n; [apply app_nil_l |constructor |]. 
+      unfold and_denote in H.
       destruct H as [? | [? | ?] ].
       * destruct H as [? ?].
-        specialize (IHe1 _ H).
-        etransitivity; [apply MES_Cont, IHe1 |].
-        etransitivity_1n; [| reflexivity].
+        specialize (IHe1 _ _ _ _ H).
+        etransitivity_nn; [apply app_nil_r | apply MES_Cont, IHe1 |].
+        etransitivity_1n; [ apply app_nil_l |  | apply rt_refl_concrete ].
         apply ES_BinopR_SC.
         simpl.
         tauto.
-      * destruct H as [n1 [? [? [? ?] ] ] ].
-        specialize (IHe1 _ H).
-        specialize (IHe2 _ H0).
-        etransitivity; [apply MES_Cont, IHe1 |].
-        etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
-        etransitivity; [apply MES_Cont, IHe2 |].
-        etransitivity_1n; [| reflexivity].
+      * destruct H as [n1 [? [? ? ] ] ].
+             epose proof Rel_Concat_element_concat_rev2 as HAND1.
+      specialize (HAND1 (eeval e1 n1)  (eeval e2  (Int64.repr 0) )  (eeval e1 n1 ∘ eeval e2  (Int64.repr 0))  s1 s2 tr).
+      assert(eeval e1 n1 ∘ eeval e2 (Int64.repr 0) == eeval e1 n1 ∘ eeval e2  (Int64.repr 0)) as HAND1_hlp. reflexivity.
+      specialize (HAND1 HAND1_hlp H). clear HAND1_hlp. destruct HAND1 as [tr1 [tr2 [s1_2 [? [? ?]]]]].
+        specialize (IHe1 _ _ _ _ H3).
+        specialize (IHe2 _ _ _ _ H4).
+        symmetry in H2.
+        etransitivity_nn; [apply H2 | apply MES_Cont, IHe1 |].
+        etransitivity_1n; [ apply app_nil_l | apply ES_BinopR_NSC; simpl; tauto |].
+        etransitivity_nn; [ apply app_nil_r | apply MES_Cont, IHe2 |].
+        etransitivity_1n; [apply app_nil_l | | apply rt_refl_concrete].
         constructor.
         simpl.
         unfold bool_compute.
         tauto.
-      * destruct H as [n1 [n2 [? [? [? [? ?] ] ] ] ] ].
-        specialize (IHe1 _ H).
-        specialize (IHe2 _ H0).
-        etransitivity; [apply MES_Cont, IHe1 |].
-        etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
-        etransitivity; [apply MES_Cont, IHe2 |].
-        etransitivity_1n; [| reflexivity].
+      * destruct H as [n1 [n2 [? [? [? ? ] ] ] ] ].
+             epose proof Rel_Concat_element_concat_rev2 as HAND1.
+      specialize (HAND1 (eeval e1 n1)  (eeval e2 n2 )  (eeval e1 n1 ∘ eeval e2   n2)  s1 s2 tr).
+      assert(eeval e1 n1 ∘ eeval e2  n2 == eeval e1 n1 ∘ eeval e2  n2) as HAND1_hlp. reflexivity.
+      specialize (HAND1 HAND1_hlp H). clear HAND1_hlp. destruct HAND1 as [tr1 [tr2 [s1_2 [? [? ?]]]]].
+        specialize (IHe1 _ _ _ _ H4).
+        specialize (IHe2 _ _ _ _ H5).
+        symmetry in H3.
+        etransitivity_nn; [apply H3 | apply MES_Cont, IHe1 |].
+        etransitivity_1n; [ apply app_nil_l | apply ES_BinopR_NSC; simpl; tauto |].
+        etransitivity_nn; [ apply app_nil_r | apply MES_Cont, IHe2 |].
+        etransitivity_1n; [apply app_nil_l | | apply rt_refl_concrete].
         constructor.
         simpl.
         unfold bool_compute.
         tauto.
     - unfold cmp_denote in H.
-      destruct H as [n1 [n2 [? [? ?] ] ] ].
-      specialize (IHe1 _ H).
-      specialize (IHe2 _ H0).
-      etransitivity_1n; [constructor |].
-      etransitivity; [apply MES_Cont, IHe1 |].
-      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
-      etransitivity; [apply MES_Cont, IHe2 |].
-      etransitivity_1n; [| reflexivity].
+      destruct H as [n1 [n2 [? ? ] ] ].
+    	
+    	epose proof Rel_Concat_element_concat_rev2 as HCmp1.
+      specialize (HCmp1 (eeval e1 n1)  (eeval e2 n2 )  (eeval e1 n1 ∘ eeval e2   n2)  s1 s2 tr).
+      assert(eeval e1 n1 ∘ eeval e2  n2 == eeval e1 n1 ∘ eeval e2  n2) as HCmp1_hlp. reflexivity.
+      specialize (HCmp1 HCmp1_hlp H). clear HCmp1_hlp. destruct HCmp1 as [tr1 [tr2 [s1_2 [? [? ?]]]]].
+      
+      specialize (IHe1 _ _ _ _ H2).
+      specialize (IHe2 _ _ _  _ H3).
+      symmetry in H1.
+      
+      etransitivity_1n ; [apply app_nil_l | constructor |].
+      etransitivity_nn; [apply H1 |apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply app_nil_l |apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity_nn; [apply app_nil_r |apply MES_Cont, IHe2 |].
+      etransitivity_1n; [apply app_nil_l | | apply rt_refl_concrete].
       constructor.
       simpl.
       unfold cmp_compute.
       tauto.
-    - unfold cmp_denote in H.
-      destruct H as [n1 [n2 [? [? ?] ] ] ].
-      specialize (IHe1 _ H).
-      specialize (IHe2 _ H0).
-      etransitivity_1n; [constructor |].
-      etransitivity; [apply MES_Cont, IHe1 |].
-      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
-      etransitivity; [apply MES_Cont, IHe2 |].
-      etransitivity_1n; [| reflexivity].
+     - unfold cmp_denote in H.
+      destruct H as [n1 [n2 [? ? ] ] ].
+    	
+    	epose proof Rel_Concat_element_concat_rev2 as HCmp1.
+      specialize (HCmp1 (eeval e1 n1)  (eeval e2 n2 )  (eeval e1 n1 ∘ eeval e2   n2)  s1 s2 tr).
+      assert(eeval e1 n1 ∘ eeval e2  n2 == eeval e1 n1 ∘ eeval e2  n2) as HCmp1_hlp. reflexivity.
+      specialize (HCmp1 HCmp1_hlp H). clear HCmp1_hlp. destruct HCmp1 as [tr1 [tr2 [s1_2 [? [? ?]]]]].
+      
+      specialize (IHe1 _ _ _ _ H2).
+      specialize (IHe2 _ _ _  _ H3).
+      symmetry in H1.
+      
+      etransitivity_1n ; [apply app_nil_l | constructor |].
+      etransitivity_nn; [apply H1 |apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply app_nil_l |apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity_nn; [apply app_nil_r |apply MES_Cont, IHe2 |].
+      etransitivity_1n; [apply app_nil_l | | apply rt_refl_concrete].
       constructor.
       simpl.
       unfold cmp_compute.
       tauto.
-    - unfold cmp_denote in H.
-      destruct H as [n1 [n2 [? [? ?] ] ] ].
-      specialize (IHe1 _ H).
-      specialize (IHe2 _ H0).
-      etransitivity_1n; [constructor |].
-      etransitivity; [apply MES_Cont, IHe1 |].
-      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
-      etransitivity; [apply MES_Cont, IHe2 |].
-      etransitivity_1n; [| reflexivity].
+     - unfold cmp_denote in H.
+      destruct H as [n1 [n2 [? ? ] ] ].
+    	
+    	epose proof Rel_Concat_element_concat_rev2 as HCmp1.
+      specialize (HCmp1 (eeval e1 n1)  (eeval e2 n2 )  (eeval e1 n1 ∘ eeval e2   n2)  s1 s2 tr).
+      assert(eeval e1 n1 ∘ eeval e2  n2 == eeval e1 n1 ∘ eeval e2  n2) as HCmp1_hlp. reflexivity.
+      specialize (HCmp1 HCmp1_hlp H). clear HCmp1_hlp. destruct HCmp1 as [tr1 [tr2 [s1_2 [? [? ?]]]]].
+      
+      specialize (IHe1 _ _ _ _ H2).
+      specialize (IHe2 _ _ _  _ H3).
+      symmetry in H1.
+      
+      etransitivity_1n ; [apply app_nil_l | constructor |].
+      etransitivity_nn; [apply H1 |apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply app_nil_l |apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity_nn; [apply app_nil_r |apply MES_Cont, IHe2 |].
+      etransitivity_1n; [apply app_nil_l | | apply rt_refl_concrete].
       constructor.
       simpl.
       unfold cmp_compute.
       tauto.
-    - unfold cmp_denote in H.
-      destruct H as [n1 [n2 [? [? ?] ] ] ].
-      specialize (IHe1 _ H).
-      specialize (IHe2 _ H0).
-      etransitivity_1n; [constructor |].
-      etransitivity; [apply MES_Cont, IHe1 |].
-      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
-      etransitivity; [apply MES_Cont, IHe2 |].
-      etransitivity_1n; [| reflexivity].
+     - unfold cmp_denote in H.
+      destruct H as [n1 [n2 [? ? ] ] ].
+    	
+    	epose proof Rel_Concat_element_concat_rev2 as HCmp1.
+      specialize (HCmp1 (eeval e1 n1)  (eeval e2 n2 )  (eeval e1 n1 ∘ eeval e2   n2)  s1 s2 tr).
+      assert(eeval e1 n1 ∘ eeval e2  n2 == eeval e1 n1 ∘ eeval e2  n2) as HCmp1_hlp. reflexivity.
+      specialize (HCmp1 HCmp1_hlp H). clear HCmp1_hlp. destruct HCmp1 as [tr1 [tr2 [s1_2 [? [? ?]]]]].
+      
+      specialize (IHe1 _ _ _ _ H2).
+      specialize (IHe2 _ _ _  _ H3).
+      symmetry in H1.
+      
+      etransitivity_1n ; [apply app_nil_l | constructor |].
+      etransitivity_nn; [apply H1 |apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply app_nil_l |apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity_nn; [apply app_nil_r |apply MES_Cont, IHe2 |].
+      etransitivity_1n; [apply app_nil_l | | apply rt_refl_concrete].
       constructor.
       simpl.
       unfold cmp_compute.
       tauto.
-    - unfold cmp_denote in H.
-      destruct H as [n1 [n2 [? [? ?] ] ] ].
-      specialize (IHe1 _ H).
-      specialize (IHe2 _ H0).
-      etransitivity_1n; [constructor |].
-      etransitivity; [apply MES_Cont, IHe1 |].
-      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
-      etransitivity; [apply MES_Cont, IHe2 |].
-      etransitivity_1n; [| reflexivity].
+     - unfold cmp_denote in H.
+      destruct H as [n1 [n2 [? ? ] ] ].
+    	
+    	epose proof Rel_Concat_element_concat_rev2 as HCmp1.
+      specialize (HCmp1 (eeval e1 n1)  (eeval e2 n2 )  (eeval e1 n1 ∘ eeval e2   n2)  s1 s2 tr).
+      assert(eeval e1 n1 ∘ eeval e2  n2 == eeval e1 n1 ∘ eeval e2  n2) as HCmp1_hlp. reflexivity.
+      specialize (HCmp1 HCmp1_hlp H). clear HCmp1_hlp. destruct HCmp1 as [tr1 [tr2 [s1_2 [? [? ?]]]]].
+      
+      specialize (IHe1 _ _ _ _ H2).
+      specialize (IHe2 _ _ _  _ H3).
+      symmetry in H1.
+      
+      etransitivity_1n ; [apply app_nil_l | constructor |].
+      etransitivity_nn; [apply H1 |apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply app_nil_l |apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity_nn; [apply app_nil_r |apply MES_Cont, IHe2 |].
+      etransitivity_1n; [apply app_nil_l | | apply rt_refl_concrete].
       constructor.
       simpl.
       unfold cmp_compute.
       tauto.
-    - unfold cmp_denote in H.
-      destruct H as [n1 [n2 [? [? ?] ] ] ].
-      specialize (IHe1 _ H).
-      specialize (IHe2 _ H0).
-      etransitivity_1n; [constructor |].
-      etransitivity; [apply MES_Cont, IHe1 |].
-      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
-      etransitivity; [apply MES_Cont, IHe2 |].
-      etransitivity_1n; [| reflexivity].
+     - unfold cmp_denote in H.
+      destruct H as [n1 [n2 [? ? ] ] ].
+    	
+    	epose proof Rel_Concat_element_concat_rev2 as HCmp1.
+      specialize (HCmp1 (eeval e1 n1)  (eeval e2 n2 )  (eeval e1 n1 ∘ eeval e2   n2)  s1 s2 tr).
+      assert(eeval e1 n1 ∘ eeval e2  n2 == eeval e1 n1 ∘ eeval e2  n2) as HCmp1_hlp. reflexivity.
+      specialize (HCmp1 HCmp1_hlp H). clear HCmp1_hlp. destruct HCmp1 as [tr1 [tr2 [s1_2 [? [? ?]]]]].
+      
+      specialize (IHe1 _ _ _ _ H2).
+      specialize (IHe2 _ _ _  _ H3).
+      symmetry in H1.
+      
+      etransitivity_1n ; [apply app_nil_l | constructor |].
+      etransitivity_nn; [apply H1 |apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply app_nil_l |apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity_nn; [apply app_nil_r |apply MES_Cont, IHe2 |].
+      etransitivity_1n; [apply app_nil_l | | apply rt_refl_concrete].
       constructor.
       simpl.
       unfold cmp_compute.
       tauto.
     - unfold arith_denote1 in H.
-      destruct H as [n1 [n2 [? [? [? [? ?] ] ] ] ] ].
-      specialize (IHe1 _ H).
-      specialize (IHe2 _ H0).
-      etransitivity_1n; [constructor |].
-      etransitivity; [apply MES_Cont, IHe1 |].
-      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
-      etransitivity; [apply MES_Cont, IHe2 |].
-      etransitivity_1n; [| reflexivity].
+      destruct H as [n1 [n2 [? [? [? ? ] ] ] ] ].
+    	epose proof Rel_Concat_element_concat_rev2 as HArith1.
+      specialize (HArith1 (eeval e1 n1)  (eeval e2 n2 )  (eeval e1 n1 ∘ eeval e2   n2)  s1 s2 tr).
+      assert(eeval e1 n1 ∘ eeval e2  n2 == eeval e1 n1 ∘ eeval e2  n2) as HArith1_hlp. reflexivity.
+      specialize (HArith1 HArith1_hlp H). clear HArith1_hlp. destruct HArith1 as [tr1 [tr2 [s1_2 [? [? ?]]]]].
+      specialize (IHe1 _ _ _ _ H4).
+      specialize (IHe2 _ _ _ _ H5).
+      etransitivity_1n ; [apply app_nil_l | constructor |].
+      etransitivity_nn; [symmetry in H3;apply H3 |apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply app_nil_l |apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity_nn; [apply app_nil_r |apply MES_Cont, IHe2 |].
+      etransitivity_1n; [apply app_nil_l | | apply rt_refl_concrete].
       constructor.
       simpl.
       unfold arith_compute1.
       tauto.
     - unfold arith_denote1 in H.
-      destruct H as [n1 [n2 [? [? [? [? ?] ] ] ] ] ].
-      specialize (IHe1 _ H).
-      specialize (IHe2 _ H0).
-      etransitivity_1n; [constructor |].
-      etransitivity; [apply MES_Cont, IHe1 |].
-      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
-      etransitivity; [apply MES_Cont, IHe2 |].
-      etransitivity_1n; [| reflexivity].
+      destruct H as [n1 [n2 [? [? [? ? ] ] ] ] ].
+    	epose proof Rel_Concat_element_concat_rev2 as HArith1.
+      specialize (HArith1 (eeval e1 n1)  (eeval e2 n2 )  (eeval e1 n1 ∘ eeval e2   n2)  s1 s2 tr).
+      assert(eeval e1 n1 ∘ eeval e2  n2 == eeval e1 n1 ∘ eeval e2  n2) as HArith1_hlp. reflexivity.
+      specialize (HArith1 HArith1_hlp H). clear HArith1_hlp. destruct HArith1 as [tr1 [tr2 [s1_2 [? [? ?]]]]].
+      specialize (IHe1 _ _ _ _ H4).
+      specialize (IHe2 _ _ _ _ H5).
+      etransitivity_1n ; [apply app_nil_l | constructor |].
+      etransitivity_nn; [symmetry in H3;apply H3 |apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply app_nil_l |apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity_nn; [apply app_nil_r |apply MES_Cont, IHe2 |].
+      etransitivity_1n; [apply app_nil_l | | apply rt_refl_concrete].
       constructor.
       simpl.
       unfold arith_compute1.
       tauto.
     - unfold arith_denote1 in H.
-      destruct H as [n1 [n2 [? [? [? [? ?] ] ] ] ] ].
-      specialize (IHe1 _ H).
-      specialize (IHe2 _ H0).
-      etransitivity_1n; [constructor |].
-      etransitivity; [apply MES_Cont, IHe1 |].
-      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
-      etransitivity; [apply MES_Cont, IHe2 |].
-      etransitivity_1n; [| reflexivity].
+      destruct H as [n1 [n2 [? [? [? ? ] ] ] ] ].
+    	epose proof Rel_Concat_element_concat_rev2 as HArith1.
+      specialize (HArith1 (eeval e1 n1)  (eeval e2 n2 )  (eeval e1 n1 ∘ eeval e2   n2)  s1 s2 tr).
+      assert(eeval e1 n1 ∘ eeval e2  n2 == eeval e1 n1 ∘ eeval e2  n2) as HArith1_hlp. reflexivity.
+      specialize (HArith1 HArith1_hlp H). clear HArith1_hlp. destruct HArith1 as [tr1 [tr2 [s1_2 [? [? ?]]]]].
+      specialize (IHe1 _ _ _ _ H4).
+      specialize (IHe2 _ _ _ _ H5).
+      etransitivity_1n ; [apply app_nil_l | constructor |].
+      etransitivity_nn; [symmetry in H3;apply H3 |apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply app_nil_l |apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity_nn; [apply app_nil_r |apply MES_Cont, IHe2 |].
+      etransitivity_1n; [apply app_nil_l | | apply rt_refl_concrete].
       constructor.
       simpl.
       unfold arith_compute1.
       tauto.
     - unfold arith_denote2 in H.
-      destruct H as [n1 [n2 [? [? [? [? ?] ] ] ] ] ].
-      specialize (IHe1 _ H).
-      specialize (IHe2 _ H0).
-      etransitivity_1n; [constructor |].
-      etransitivity; [apply MES_Cont, IHe1 |].
-      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
-      etransitivity; [apply MES_Cont, IHe2 |].
-      etransitivity_1n; [| reflexivity].
+      destruct H as [n1 [n2 [? [? [? ? ] ] ] ] ].
+    	epose proof Rel_Concat_element_concat_rev2 as HArith1.
+      specialize (HArith1 (eeval e1 n1)  (eeval e2 n2 )  (eeval e1 n1 ∘ eeval e2   n2)  s1 s2 tr).
+      assert(eeval e1 n1 ∘ eeval e2  n2 == eeval e1 n1 ∘ eeval e2  n2) as HArith1_hlp. reflexivity.
+      specialize (HArith1 HArith1_hlp H). clear HArith1_hlp. destruct HArith1 as [tr1 [tr2 [s1_2 [? [? ?]]]]].
+      specialize (IHe1 _ _ _ _ H4).
+      specialize (IHe2 _ _ _ _ H5).
+      etransitivity_1n ; [apply app_nil_l | constructor |].
+      etransitivity_nn; [symmetry in H3;apply H3 |apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply app_nil_l |apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity_nn; [apply app_nil_r |apply MES_Cont, IHe2 |].
+      etransitivity_1n; [apply app_nil_l | | apply rt_refl_concrete].
       constructor.
       simpl.
       unfold arith_compute2.
       tauto.
     - unfold arith_denote2 in H.
-      destruct H as [n1 [n2 [? [? [? [? ?] ] ] ] ] ].
-      specialize (IHe1 _ H).
-      specialize (IHe2 _ H0).
-      etransitivity_1n; [constructor |].
-      etransitivity; [apply MES_Cont, IHe1 |].
-      etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
-      etransitivity; [apply MES_Cont, IHe2 |].
-      etransitivity_1n; [| reflexivity].
+      destruct H as [n1 [n2 [? [? [? ? ] ] ] ] ].
+    	epose proof Rel_Concat_element_concat_rev2 as HArith1.
+      specialize (HArith1 (eeval e1 n1)  (eeval e2 n2 )  (eeval e1 n1 ∘ eeval e2   n2)  s1 s2 tr).
+      assert(eeval e1 n1 ∘ eeval e2  n2 == eeval e1 n1 ∘ eeval e2  n2) as HArith1_hlp. reflexivity.
+      specialize (HArith1 HArith1_hlp H). clear HArith1_hlp. destruct HArith1 as [tr1 [tr2 [s1_2 [? [? ?]]]]].
+      specialize (IHe1 _ _ _ _ H4).
+      specialize (IHe2 _ _ _ _ H5).
+      etransitivity_1n ; [apply app_nil_l | constructor |].
+      etransitivity_nn; [symmetry in H3;apply H3 |apply MES_Cont, IHe1 |].
+      etransitivity_1n; [apply app_nil_l |apply ES_BinopR_NSC; simpl; tauto |].
+      etransitivity_nn; [apply app_nil_r |apply MES_Cont, IHe2 |].
+      etransitivity_1n; [apply app_nil_l | | apply rt_refl_concrete].
       constructor.
       simpl.
       unfold arith_compute2.
       tauto.
+      (*Arithment ooperations' proof reconstructed.*)
   + destruct op; simpl in H.
     - unfold not_denote in H.
-      destruct H as [H | H].
-      * destruct H as [n0 [? [? ? ] ] ].
-        specialize (IHe _ H).
-        etransitivity_1n; [constructor |].
-        etransitivity; [apply MES_Cont, IHe |].
-        etransitivity_1n; [| reflexivity].
+      destruct H as [n0 [H0 [H|H] ]].
+      * destruct H as [? ? ].
+        specialize (IHe _ _ _ _ H0).
+        etransitivity_1n; [apply app_nil_l | constructor |].
+        etransitivity_nn; [apply app_nil_r|apply MES_Cont, IHe |].
+        etransitivity_1n; [apply app_nil_l | | apply rt_refl_concrete].
         constructor.
         simpl.
         unfold not_compute.
         tauto.
-      * destruct H as [? ?].
-        specialize (IHe _ H).
-        etransitivity_1n; [constructor |].
-        etransitivity; [apply MES_Cont, IHe |].
-        etransitivity_1n; [| reflexivity].
+       * destruct H as [? ? ].
+        specialize (IHe _ _ _ _ H0).
+        etransitivity_1n; [apply app_nil_l | constructor |].
+        etransitivity_nn; [apply app_nil_r|apply MES_Cont, IHe |].
+        etransitivity_1n; [apply app_nil_l | | apply rt_refl_concrete].
         constructor.
         simpl.
         unfold not_compute.
         tauto.
     - unfold neg_denote in H.
       destruct H as [n0 [? [? ? ] ] ].
-      specialize (IHe _ H).
-      etransitivity_1n; [constructor |].
-      etransitivity; [apply MES_Cont, IHe |].
-      etransitivity_1n; [| reflexivity].
+      specialize (IHe _ _ _ _ H).
+        etransitivity_1n; [apply app_nil_l | constructor |].
+        etransitivity_nn; [apply app_nil_r|apply MES_Cont, IHe |].
+        etransitivity_1n; [apply app_nil_l | | apply rt_refl_concrete].
       constructor.
       simpl.
       unfold neg_compute.
       tauto.
   + unfold deref_denote in H.
     destruct H as [n0 [? ?] ].
-    specialize (IHe _ H).
-    etransitivity_1n; [constructor |].
-    etransitivity; [apply MES_Cont, IHe |].
-    etransitivity_1n; [| reflexivity].
+    specialize (IHe _ _ _ _ H).
+        etransitivity_1n; [apply app_nil_l | constructor |].
+        etransitivity_nn; [apply app_nil_r|apply MES_Cont, IHe |].
+        etransitivity_1n; [apply app_nil_l | | apply rt_refl_concrete].
     constructor.
     tauto.
+    (*Proofs for our new definiton:*)
+   + unfold malloc_denote in H.
+   		destruct H as [n0].
+       epose proof Rel_Concat_element_concat_rev2 as HArith1.
+      specialize (HArith1 (eeval e n0)   (malloc_action n0 n)  (eeval e n0 ∘ malloc_action n0 n) s1 s2 tr).
+      assert(eeval e n0 ∘ malloc_action n0 n==eeval e n0 ∘ malloc_action n0 n) as HArith1_hlp. reflexivity.
+      specialize (HArith1 HArith1_hlp H). clear HArith1_hlp. destruct HArith1 as [tr1 [tr2 [s1_2 [? [? ?]]]]].
+      
+      specialize (IHe _ _ _ _ H1).
+      symmetry in H0.
+   	      etransitivity_1n ; [apply app_nil_l | constructor |].
+      etransitivity_nn; [apply H0 |apply MES_Cont, IHe |].
+      etransitivity_1n; [apply app_nil_r |apply ES_MallocStep,H2;simpl|apply rt_refl_concrete].
+	+ unfold read_int_denote in H.
+		destruct H as [? ?].
+		subst tr s2.
+		etransitivity_1n;[apply app_nil_r | constructor | apply rt_refl_concrete].
+	+ unfold read_char_denote in H.
+		destruct H as [? ?].
+		subst tr s2.
+		etransitivity_1n;[apply app_nil_r |  | apply rt_refl_concrete].
+		constructor.
 Qed.
+
+(* Finished. *)
