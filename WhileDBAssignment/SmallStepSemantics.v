@@ -457,7 +457,7 @@ Lemma eeval_multi_estep: forall e n s1 s2 tr,
 
 Proof.
   intros.
-  revert n H; induction e; simpl; intros.
+  revert n H. revert tr s2 s1.  induction e; simpl; intros.
   + unfold const_denote in H.
   	transitivity_1n_General.
     exists ((EL_Value (Int64.repr n), s1)),nil,nil.
@@ -480,37 +480,51 @@ Proof.
      etransitivity_1n; [eapply app_nil_l |constructor |]. (*用app_nil_l解决多出来的分支问题*)
       unfold or_denote in H.
       destruct H as [? | [? | ?] ].
-      * destruct H as [n1 [? [? ?] ] ].
-        specialize (IHe1 _ H).
+      {
+       destruct H as [n1 [? [? ?] ] ].
+        specialize (IHe1 _ _ _ _ H).
+        (*etransitivity_nn. { assert(tr++nil=tr). apply app_nil_r. apply H2. } apply MES_Cont,IHe1. [apply app_nil_r| |].*)
+        etransitivity_nn; [apply app_nil_r| apply MES_Cont,IHe1 |].
+        (*etransitivity; [apply MES_Cont, IHe1 |].*)
+        etransitivity_1n;[apply app_nil_r| constructor;unfold short_circuit;split;eauto| ].
+        apply rt_refl_concrete.
+       }
+      {
+       destruct H as [n2 [? [? ? ] ] ].
+      epose proof Rel_Concat_element_concat_rev2 as HOR1.
+      specialize (HOR1 (eeval e1 (Int64.repr 0))  (eeval e2 n2 )  (eeval e1 (Int64.repr 0) ∘ eeval e2 n2)  s1 s2 tr).
+      assert(eeval e1 (Int64.repr 0) ∘ eeval e2 n2 == eeval e1 (Int64.repr 0) ∘ eeval e2 n2) as HOR1_hlp. reflexivity.
+      specialize (HOR1 HOR1_hlp H). clear HOR1_hlp. destruct HOR1 as [tr1 [tr2 [s1_2 [? [? ?]]]]].
 
-        (* Not refined below, further debugging needed.**)
-        etransitivity; [apply MES_Cont, IHe1 |].
-        etransitivity_1n; [| reflexivity].
-        apply ES_BinopR_SC.
-        simpl.
-        tauto.
-      * destruct H as [n2 [? [? [? ?] ] ] ].
-        specialize (IHe1 _ H).
-        specialize (IHe2 _ H0).
-        etransitivity; [apply MES_Cont, IHe1 |].
-        etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
-        etransitivity; [apply MES_Cont, IHe2 |].
-        etransitivity_1n; [| reflexivity].
+        specialize (IHe1 _ _ _ _ H3).
+        specialize (IHe2 _ _ _ _ H4).
+        symmetry in H2.
+        etransitivity_nn; [apply H2 | apply MES_Cont, IHe1 |].
+        etransitivity_1n; [apply app_nil_l | apply ES_BinopR_NSC; simpl; tauto |].
+        etransitivity_nn; [apply app_nil_r | apply MES_Cont, IHe2 |].
+        etransitivity_1n. apply app_nil_l. constructor. unfold binop_compute. unfold bool_compute. right. split;eauto. apply rt_refl_concrete.
+        }
+      {
+       destruct H as [? ? ].
+       
+       epose proof Rel_Concat_element_concat_rev2 as HOR1.
+      specialize (HOR1 (eeval e1 (Int64.repr 0))  (eeval e2  (Int64.repr 0) )  (eeval e1 (Int64.repr 0) ∘ eeval e2  (Int64.repr 0))  s1 s2 tr).
+      assert(eeval e1 (Int64.repr 0) ∘ eeval e2 (Int64.repr 0) == eeval e1 (Int64.repr 0) ∘ eeval e2  (Int64.repr 0)) as HOR1_hlp. reflexivity.
+      specialize (HOR1 HOR1_hlp H). clear HOR1_hlp. destruct HOR1 as [tr1 [tr2 [s1_2 [? [? ?]]]]].
+       
+        specialize (IHe1 _ _ _ _ H2).
+        specialize (IHe2 _ _ _ _ H3).
+        symmetry in H1.
+        etransitivity_nn; [apply H1 | apply MES_Cont, IHe1 |].
+        etransitivity_1n; [ apply app_nil_l | apply ES_BinopR_NSC; simpl; tauto |].
+        etransitivity_nn; [ apply app_nil_r | apply MES_Cont, IHe2 |].
+        etransitivity_1n; [apply app_nil_l | | apply rt_refl_concrete].
         constructor.
         simpl.
         unfold bool_compute.
         tauto.
-      * destruct H as [? [? ?] ].
-        specialize (IHe1 _ H).
-        specialize (IHe2 _ H0).
-        etransitivity; [apply MES_Cont, IHe1 |].
-        etransitivity_1n; [apply ES_BinopR_NSC; simpl; tauto |].
-        etransitivity; [apply MES_Cont, IHe2 |].
-        etransitivity_1n; [| reflexivity].
-        constructor.
-        simpl.
-        unfold bool_compute.
-        tauto.
+        }
+        (* Not revised below, further debugging needed.**)
     - etransitivity_1n; [constructor |].
       unfold or_denote in H.
       destruct H as [? | [? | ?] ].

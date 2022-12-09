@@ -42,7 +42,7 @@ Lemma Rel_Concat_element_concat_rev:
 forall
 {A B: Type}   
 (X Y Z: A -> list B -> A-> Prop)
-(a c d:A) (b12: list B),
+(a d:A) (b12: list B),
   Z=X∘Y -> Z a b12 d-> 
   exists b1 b2 c,b12 = b1 ++ b2 /\
   X a b1 c /\ Y c b2 d.
@@ -57,7 +57,7 @@ Lemma Rel_Concat_element_concat_rev2:
 forall
 {A B: Type}   
 (X Y Z: A -> list B -> A-> Prop)
-(a c d:A) (b12: list B),
+(a d:A) (b12: list B),
   Z==X∘Y -> Z a b12 d-> 
   exists b1 b2 c,b12 = b1 ++ b2 /\
   X a b1 c /\ Y c b2 d.
