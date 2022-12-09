@@ -1,3 +1,6 @@
 *.vok
 *.vos
 *.glob
+*.aux
+*.v#
+*.cache
