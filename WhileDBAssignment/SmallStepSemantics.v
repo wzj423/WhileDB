@@ -1010,3 +1010,392 @@ Proof.
       etransitivity_1n; [apply app_nil_r |constructor |apply rt_refl_concrete].
 Qed.
 
+
+(** 先定义“后续表达式”求值的指称语义 *)
+(*笔记： 吴子健，2022-12-10 19:25, 这里一定要注意短路求值的问题，
+比如，当KBinOpL, op=Or， n1<>0的时候，相应的ek_eval后面的context
+指称语义就自然地要求context的求值被短路，也就是ek_eval
+此时满足有s1=s2，tr=nil 下面注释中是一开始时的错误定义方式
+*)
+(* Definition binop_compute_step1
+             (op: binop)
+             (n1: int64)
+             (D2: int64 -> Prop)
+             (n: int64): Prop :=
+  match op with
+  | OOr => Int64.signed n1 <> 0 /\ n = Int64.repr 1 \/
+           (exists n2,
+              n1 = Int64.repr 0 /\
+              D2 n2 /\
+              Int64.signed n2 <> 0 /\
+              n = Int64.repr 1) \/
+           (n1 = Int64.repr 0 /\
+            D2 (Int64.repr 0) /\
+            n = Int64.repr 0)
+  | OAnd => n1 = Int64.repr 0 /\ n = Int64.repr 0 \/
+            (Int64.signed n1 <> 0 /\
+             D2 (Int64.repr 0) /\
+             n = Int64.repr 0) \/
+            (exists n2,
+               Int64.signed n1 <> 0 /\
+               D2 n2 /\
+               Int64.signed n2 <> 0 /\
+               n = Int64.repr 1)
+  | _ => exists n2, D2 n2 /\ binop_compute op n1 n2 n
+  end.
+
+Definition  eeval_to_D 
+	(x: int64 -> prog_state -> list event -> prog_state -> Prop)
+	(p1:prog_state) (tr:list event) (p2: prog_state):
+	int64->Prop:=
+	fun n => x n p1 tr p2. 
+
+(*暂定第一版 ek_eval,定义如下（很有可能后期还要重修）*)
+(*int64_1: 之前的expr_loc求得的值
+最后总表达式的值是int64_2
+prog_state_1: expr_lock求值完成后的state
+接下来，求值expr_ectx，经过了 list event 的 trace 达到了另外的一个 prop_state2,获得了最后的返回值 *)
+Definition ek_eval (k: expr_ectx):
+  int64 -> int64-> prog_state -> list event -> prog_state  -> Prop :=
+  match k with
+  | KBinopL op e2 => fun n1 n s1 tr s2 =>
+      binop_compute_step1 op n1 ((eeval_to_D (eeval e2)) s1 tr s2) n (*这里出错了！当n1产生短路时，s1 tr s2实际可取任意值！！！*)
+  | KBinopR n1 op => fun n2 n s1 tr s2 =>
+  		s1=s2 /\ tr=nil /\
+      binop_compute op n1 n2 n
+  | KUnop op => fun n0 n s1 tr s2 =>
+    	s1=s2 /\ tr=nil /\
+      unop_compute op n0 n
+  | KDeref => fun n0 n s1 tr s2 =>
+      	s1=s2 /\ tr=nil /\
+      s1.(mem) n0 = Some n
+	| KMalloc =>  fun n0 n s1 tr s2 =>
+    malloc_action n0 n s1 tr s2
+  end. *)
+
+Definition binop_compute_step1
+             (op: binop)
+             (n1: int64)
+             (D2: int64-> prog_state -> list event ->prog_state -> Prop)
+             (n: int64)
+             (s1: prog_state)
+             (tr:list event)
+             (s2:prog_state ): Prop :=
+  match op with
+  | OOr => Int64.signed n1 <> 0 /\ n = Int64.repr 1 /\ s1=s2 /\ tr=nil	\/
+           (exists n2,
+              n1 = Int64.repr 0 /\
+              D2 n2 s1 tr s2 /\
+              Int64.signed n2 <> 0 /\
+              n = Int64.repr 1) \/
+           (n1 = Int64.repr 0 /\
+            D2 (Int64.repr 0) s1 tr s2 /\
+            n = Int64.repr 0)
+  | OAnd => n1 = Int64.repr 0 /\ n = Int64.repr 0  /\ s1=s2 /\ tr=nil  \/
+            (Int64.signed n1 <> 0 /\
+             D2 (Int64.repr 0) s1 tr s2 /\
+             n = Int64.repr 0) \/
+            (exists n2,
+               Int64.signed n1 <> 0 /\
+               D2 n2 s1 tr s2 /\
+               Int64.signed n2 <> 0 /\
+               n = Int64.repr 1)
+  | _ => exists n2, D2 n2 s1 tr s2 /\ binop_compute op n1 n2 n
+  end.
+
+Definition  eeval_to_D 
+	(x: int64 -> prog_state -> list event -> prog_state -> Prop)
+	(p1:prog_state) (tr:list event) (p2: prog_state):
+	int64->Prop:=
+	fun n => x n p1 tr p2. 
+
+Definition ek_eval (k: expr_ectx):
+  int64 -> int64-> prog_state -> list event -> prog_state  -> Prop :=
+  match k with
+  | KBinopL op e2 => fun n1 n s1 tr s2 =>
+      binop_compute_step1 op n1 (eeval e2) n s1 tr s2
+  | KBinopR n1 op => fun n2 n s1 tr s2 =>
+  		s1=s2 /\ tr=nil /\
+      binop_compute op n1 n2 n
+  | KUnop op => fun n0 n s1 tr s2 =>
+    	s1=s2 /\ tr=nil /\
+      unop_compute op n0 n
+  | KDeref => fun n0 n s1 tr s2 =>
+      	s1=s2 /\ tr=nil /\
+      s1.(mem) n0 = Some n
+	| KMalloc =>  fun n0 n s1 tr s2 =>
+    malloc_action n0 n s1 tr s2
+  end.
+
+Fixpoint el_eval (el: expr_loc):
+   int64-> prog_state -> list event -> prog_state  -> Prop :=
+  match el with
+  | EL_Value n0 => fun n s1 tr s2 =>
+  s1=s2/\ tr=nil/\
+      n = n0
+  | EL_FocusedExpr e => 
+      eeval e
+  | EL_Cont el k => fun n s1 tr s2 =>
+(*   exists n0, ((el_eval el  n0)∘(ek_eval k n0 n)) s1 tr s2 *)
+       exists n0 tr1 tr2 s1_2, tr1++tr2=tr/\ el_eval el n0 s1 tr1 s1_2 /\ ek_eval k n0 n s1_2 tr2 s2 
+(*   | EL_Cont el k => fun s n =>
+      exists n0, el_eval el s n0 /\ ek_eval k s n0 n *)
+  end.   
+  
+Check eeval.
+Check el_eval.
+
+Ltac intros_until_EQ EQ :=
+  match goal with
+  | |- ?P -> ?Q => intros EQ
+  | _ => intro; intros_until_EQ EQ
+  end.
+  
+Ltac specialize_until_EQ H :=
+  match type of H with
+  | ?P -> ?Q => specialize (H eq_refl)
+  | forall _:?A, _ => let a := fresh "a" in
+                      evar (a: A);
+                      specialize (H a);
+                      subst a;
+                      specialize_until_EQ H
+  end.
+
+
+Ltac new_intros_and_subst Base0 :=
+  match goal with
+  | |- Base0 => idtac
+  | |- _ = ?x -> _ => is_var x;
+                      let H := fresh "H" in
+                      intros H;
+                      revert Base0;
+                      rewrite <- H in *;
+                      clear x H;
+                      intros Base0;
+                      new_intros_and_subst Base0
+  end.
+
+(* Set Ltac Debug. *)
+
+
+Ltac induction_step2 H :=
+  match type of H with
+  | ?cstep ?a ?tr ?b =>
+    revert_dependent_component a H;
+    revert_dependent_component b H;
+    let a0 := fresh "cst" in
+    let b0 := fresh "cst" in
+    let EQa := fresh "EQ" in
+    let EQb := fresh "EQ" in
+    remember a as a0 eqn:EQa in H;
+    remember b as b0 eqn:EQb in H;
+    revert EQa EQb;
+    revert_component a;
+    revert_component b;
+    match goal with
+    | |- ?Q =>
+      let Pab := eval pattern a0, b0 in Q in
+      match Pab with
+      | ?P0 a0 b0 =>
+        let P := fresh "P" in
+        set (P := P0); change (P a0 b0);
+        induction H; intros_until_EQ EQa; intros EQb;
+        repeat
+          match goal with
+          | IH: context [P] |- _ =>
+            unfold P in IH;
+            specialize_until_EQ IH;
+            specialize (IH eq_refl)
+          end;
+        unfold P; clear P;
+        match goal with
+          | |- ?Base =>
+            let Base0 := fresh in
+            set (Base0 := Base);
+            first [ injection EQa; injection EQb; clear EQa; clear EQb;
+                    new_intros_and_subst Base0
+                  | revert EQa EQb; new_intros_and_subst Base0
+                  | idtac ];
+            unfold Base0; clear Base0
+        end
+      end
+    end
+  end.
+
+Lemma binop_compute_step1_binop_denote:
+  forall s1 tr1 s2 tr2 s3 tr12 op (D1 D2: int64->prog_state->list event ->prog_state -> Prop) n1 n,
+    D1 n1 s1 tr1 s2 ->
+    tr1++tr2=tr12->
+    binop_compute_step1 op n1 (D2) n s2 tr2 s3 ->
+    binop_denote op D1 D2 n s1 tr12 s3.
+Proof.
+  intros.
+  destruct op; simpl in *.
+  + unfold or_denote.
+    destruct H1 as [? | [? | ?]];[left | right; left | right; right].
+    - exists n1. destruct H1 as [? [? [?]]]. repeat split;auto.
+    subst tr2 s3. rewrite app_nil_r in H0. congruence.
+    - destruct H1 as [n2 [? [? [?]]]]; exists n2.
+     	repeat split;auto.
+     	rel_unfold. exists s2, tr1, tr2. repeat split;auto. congruence.
+    - destruct H1 as [? [?]]. repeat split;auto.
+     	rel_unfold.
+			exists s2, tr1, tr2. repeat split;auto. congruence.
+  + unfold and_denote.
+    destruct H1 as [? | [? | ?]];[left | right; left | right; right].
+    - destruct H1 as [? [? [?]]]. repeat split;auto. subst n1.
+    subst tr2 s3. rewrite app_nil_r in H0. congruence.
+    - destruct H1 as [? [? ?]]. exists n1.
+     	repeat split;auto.
+     	rel_unfold. exists s2, tr1, tr2. repeat split;auto.
+    - destruct H1 as [? [? [? [? ?]]]]. repeat split;auto.
+     	rel_unfold. exists n1 ,x. split.
+			exists s2, tr1, tr2. repeat [>repeat split;auto]. repeat split;auto.
+  + unfold cmp_denote. (* unfold cmp_compute in H1.*)
+    destruct H1 as [n2 [?]]. exists n1, n2. split;[|tauto]. rel_unfold. 
+    exists s2,tr1,tr2. repeat split;auto.
+  + unfold cmp_denote. 
+    destruct H1 as [n2 [?]]. exists n1, n2. split;[|tauto]. rel_unfold. 
+    exists s2,tr1,tr2. repeat split;auto.
+  + unfold cmp_denote. 
+    destruct H1 as [n2 [?]]. exists n1, n2. split;[|tauto]. rel_unfold. 
+    exists s2,tr1,tr2. repeat split;auto.
+  + unfold cmp_denote. 
+    destruct H1 as [n2 [?]]. exists n1, n2. split;[|tauto]. rel_unfold. 
+    exists s2,tr1,tr2. repeat split;auto.
+  + unfold cmp_denote. 
+    destruct H1 as [n2 [?]]. exists n1, n2. split;[|tauto]. rel_unfold. 
+    exists s2,tr1,tr2. repeat split;auto.
+  + unfold cmp_denote. 
+    destruct H1 as [n2 [?]]. exists n1, n2. split;[|tauto]. rel_unfold. 
+    exists s2,tr1,tr2. repeat split;auto.
+  + unfold arith_denote1. (* unfold arith_compute1 in H0.*)
+    destruct H1 as [n2 [?]]; exists n1, n2. split;[| tauto]. 
+    rel_unfold; exists s2,tr1,tr2. repeat split;auto.
+  + unfold arith_denote1. (* unfold arith_compute1 in H0.*)
+    destruct H1 as [n2 [?]]; exists n1, n2. split;[| tauto]. 
+    rel_unfold; exists s2,tr1,tr2. repeat split;auto.
+  + unfold arith_denote1. (* unfold arith_compute1 in H0.*)
+    destruct H1 as [n2 [?]]; exists n1, n2. split;[| tauto]. 
+    rel_unfold; exists s2,tr1,tr2. repeat split;auto.
+  + unfold arith_denote2. (* unfold arith_compute1 in H0.*)
+    destruct H1 as [n2 [?]]; exists n1, n2. split;[| tauto]. 
+    rel_unfold; exists s2,tr1,tr2. repeat split;auto.
+  + unfold arith_denote2. (* unfold arith_compute1 in H0.*)
+    destruct H1 as [n2 [?]]; exists n1, n2. split;[| tauto]. 
+    rel_unfold; exists s2,tr1,tr2. repeat split;auto.
+Qed. 
+
+
+Lemma estep_sound: forall s1  el1 tr1 tr2 tr12 s2 s3 el2 n,
+  estep (el1,s1) tr1 (el2,s2) ->
+  el_eval el2 n s2 tr2 s3 ->
+  tr1++tr2=tr12 ->
+  el_eval el1 n s1 tr12 s3.
+Proof.
+  intros. 
+  revert n H0. generalize dependent tr2. revert s3. revert tr12.  induction_step2 H.
+  1:{ (*Rule 1: Var denote*) 	simpl. intros. simpl. unfold var_denote. repeat destruct H0 as [? H0].
+    	repeat split;auto. subst tr2. auto. }
+  1:{ (*Rule 2:Const denote*)simpl in*. unfold const_denote. intros. destruct H2 as [? [? ?]].
+     repeat split;try auto;try congruence. }
+  1:{ (*Rule 3*) intros. simpl in H1.  subst tr2.  intros. simpl. simpl in H0.  destruct H0 as [n1 [tr1 [tr2 [s1_2 [? [? ?]]]]]].
+  	eapply binop_compute_step1_binop_denote;eauto. }
+	{ (*Rule 4*) simpl  in *; intros. destruct H0 as [? [? ?]]. subst. exists n1, nil,nil,s3. repeat split;auto.
+		unfold short_circuit in H. destruct op; simpl in *; try contradiction;left;repeat split;auto;destruct H;repeat auto.
+		}
+  {  (*Rule 5*)destruct op; simpl in *; try [>intros;destruct H0 as [n2 [? [? [? [? [? [? [? ?]]] ] ]]]]; exists n1,nil, tr2,s;subst; repeat split;auto;
+  			exists n2;rewrite app_nil_r; auto].
+  		+ intros. destruct H0 as [n2 [? [? [? [? [? [? [? ?]]] ] ]]]]. exists n1,nil, tr2,s.  subst. repeat split;auto. 
+  				unfold bool_compute in H5. destruct H5 as [[? ?]|[? ?]].
+  				{ right;right. repeat split;auto. rewrite app_nil_r. subst;auto. }
+  				{ right;left. exists n2. repeat split;auto. rewrite app_nil_r. subst;auto. }
+  		+ intros. destruct H0 as [n2 [? [? [? [? [? [? [? ?]]] ] ]]]]. exists n1,nil, tr2,s.  subst. repeat split;auto. 
+  				unfold bool_compute in H5. destruct H5 as [[? ?]|[? ?]].
+  				{ right;left. subst n2. repeat split;auto. rewrite app_nil_r. subst;auto. }
+  				{ right;right. exists n2. repeat split;auto. rewrite app_nil_r. subst;auto. }
+	}
+	{
+		intros. destruct op; simpl in * ;try [>destruct H0 as[? [? ?]]; exists n2, nil,nil,s;subst;repeat split;auto];
+		try [>unfold arith_compute2 in H;unfold arith_compute1 in H; tauto].
+		(*Rule 6*)
+	}
+	{ (*Rule 7*)
+		intros. rewrite app_nil_l in H1. subst. simpl in *. destruct H0 as [? [? [? [? [? [? [? [? ?]]]]]]]]. subst. rewrite app_nil_r. 
+		destruct op; simpl in *; intros.
+		+ unfold not_denote;unfold not_compute in H3. exists x. tauto.
+		+ unfold neg_denote;unfold neg_compute in H3. exists x. tauto.
+	}
+	{	 (*Rule 8*)
+		intros. rewrite app_nil_l in H1. subst. simpl in *. destruct H0 as [? [? ?]]. subst.
+		exists n0, nil,nil, s3. repeat split;tauto.
+	}
+	{ (*Rule 9*)
+		intros. rewrite app_nil_l in H1. subst. simpl in *. destruct H0 as [? [? [? [? [? [? [? [? ?]]]]]]]]. subst. rewrite app_nil_r. 
+		unfold deref_denote. exists x. tauto.
+	}
+	{ (*Rule 10*)
+			intros. rewrite app_nil_l in H1. subst. simpl in *.  destruct H0 as [? [? ?]]. subst.
+					exists n0, nil,nil, s3. repeat split;tauto.
+	}
+	{ (*Rule 11*)
+				intros. rewrite app_nil_l in H1. subst. simpl in *.  destruct H0 as [? [? [? [? [? [?]]]]]]. 
+				unfold malloc_denote. exists x. rel_unfold. exists x2, x0,x1. tauto.
+	}
+	{ (*Rule 12*)
+						intros. simpl in *. destruct H0 as [? [?]];subst. exists n0, nil, tr,s1. split; try tauto.
+						rewrite app_nil_l,app_nil_r. tauto.
+	}
+	{
+					intros. simpl in *.  destruct H0 as [? [?]]. subst.
+					unfold read_int_denote. tauto. 
+	}
+  { (*Rule 14: Write Char*)simpl in *. intros. unfold read_char_denote. destruct H0 as [? [? ?]]. split;[congruence| auto]. }
+  { (*Rule 15: Cont*)simpl in IHestep.  simpl in *. intros. destruct H0 as [n0 [tr1 [tr3 [s2_3 [? [? ?]]]]]].
+  			specialize (IHestep s2 el2 s1 el1).
+  			assert ( (el1, s1) = (el1, s1)). auto. assert ( (el2, s2) = (el2, s2)). auto. 
+  			specialize (IHestep H4 H5). clear H4 H5.
+  			remember (tr++tr1) as tr01 eqn:Htr.
+  			assert(tr01++tr3=tr12). { rewrite Htr. rewrite <- ((Coq.Lists.List.app_assoc)).  congruence. }
+  			exists n0,tr01,tr3,s2_3.
+  			specialize (IHestep tr01 s2_3 tr1). symmetry in Htr. specialize (IHestep Htr n0 H2).
+  			repeat split;auto. }	
+Qed.
+
+(*Above check passed. 22-12-10 20:47*)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(** 最后要证明多步关系到指称语义的推导，只需对步数归纳即可。*)
+Lemma multi_estep_eeval: forall s1 e tr s2 n,
+  multi_estep (EL_FocusedExpr e,s1) tr (EL_Value n,s2) ->
+  eeval e n s1 tr s2.
+Proof.
+  intros.
+  assert (el_eval (EL_Value n) n s2 nil s2). {
+    simpl.
+    auto.
+  }
+  assert (el_eval (EL_FocusedExpr e) n s1 tr s2  -> eeval e n s1 tr s2). {
+    simpl.
+    tauto.
+  }
+  apply H1; clear H1.
+  set (el1 := EL_FocusedExpr e) in *; clearbody el1.
+  set (el2 := EL_Value n) in *; clearbody el2.
+  clear e.
+  induction_1n H.
+  + apply H0.
+  + eapply estep_sound; eauto.
+Qed.
