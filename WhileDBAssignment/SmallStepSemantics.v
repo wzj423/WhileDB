@@ -1395,7 +1395,23 @@ Proof.
   set (el1 := EL_FocusedExpr e) in *; clearbody el1.
   set (el2 := EL_Value n) in *; clearbody el2.
   clear e.
-  induction_1n H.
-  + apply H0.
-  + eapply estep_sound; eauto.
+  unfold multi_estep in H.
+  unfold clos_refl_trans in H.
+  unfold Sets.omega_union in H.
+  simpl in H. destruct H.
+  revert H H0. revert tr s1 s2 el1 el2 n.
+	induction x;intros.
+	+ epose proof nsteps_O_id estep.  revert H H1. sets_unfold. intros. 
+		specialize (H1 (el1,s1) tr (el2,s2)). unfold iff in H1;destruct H1. specialize (H1 H). clear H2.
+		revert H1. simpl. rel_unfold. intros. destruct H1;subst. injection H2. intros. subst. tauto.
+	+       assert( ((S x)%nat > O)%nat) as Hn1. lia.
+				assert ( ((S x)-1 = x)%nat) as Hn2. lia.
+    epose proof nsteps_1n estep (S x) (el1,s1) (el2,s2) tr Hn1 H.
+    destruct H1 as [tr0 [tr1 [(el3,s3)  [? [? ?] ]]]]. rewrite Hn2 in H3.
+    
+    specialize (IHx _ _ _ _ _ n H3 H0).
+    
+    epose proof estep_sound as Htarget.
+    specialize (Htarget s1 el1 tr0 tr1 tr s3 s2 el3 n H2 IHx).
+    symmetry in H1.  specialize (Htarget H1). tauto.
 Qed.
