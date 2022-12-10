@@ -37,7 +37,7 @@ Proof.
   exists c, b1 ,b2.
   repeat split; auto.
 Qed.
-
+ 
 Lemma Rel_Concat_element_concat_rev:
 forall
 {A B: Type}   
@@ -67,6 +67,22 @@ Proof.
   exists x0,x1,x.
   repeat split; auto.
 Qed.
+
+Lemma Rel_Concat_element_concat_rev3:
+forall
+{A B: Type}   
+(X Y Z: A -> list B -> A-> Prop)
+(a d:A) (b12: list B),
+  Z a b12 d ->  Z==X∘Y ->
+  exists b1 b2 c, b1 ++ b2 =b12/\
+  X a b1 c /\ Y c b2 d.
+Proof.
+  intros. revert H0. rel_unfold;intros.
+  rewrite H0 in H;repeat destruct H0; repeat destruct H;destruct H1.
+  exists x0,x1,x.
+  repeat split; auto.
+Qed.
+
 
 Lemma nsteps_O_id:
   forall
@@ -262,5 +278,30 @@ Proof.
     (nsteps x x1) (nsteps x (x0+x1)%nat) a c d b1 b2 b12 
     H H0 H1 H3.
   apply H4.
+Qed.
+
+Lemma rel_union_or_iff:
+	  forall
+  {A B: Type}
+  (x y: A->list B-> A->Prop)
+  (a c: A) (b:list B),
+    (x∪y) a b c <-> x a b c \/ y a b c.
+Proof.
+	intros.
+	sets_unfold. reflexivity.
+Qed. 
+
+Search iter.
+Lemma Nat_iter_succ:
+forall {A : Type} (n : nat) (f : A -> A) (x : A), Nat.iter (S n) f x = f (Nat.iter n f x).
+Proof.
+intros. simpl. auto.
+Qed.
+
+Search iter.
+Lemma Nat_iter_succ2:
+forall (A : Type) (n : nat) (f : A -> A) (x : A), Nat.iter (S n) f x = f (Nat.iter n f x).
+Proof.
+intros. simpl. auto.
 Qed.
 

@@ -4,6 +4,8 @@ Require Import compcert.lib.Integers.
 Require Import WhileDB.SetsDomain.
 Require Import WhileDB.RelDomain.
 Require Import WhileDB.RelDomainAuxProofs.
+Require Import WhileDB.BWFix.
+Require Import WhileDB.BWFixAuxProofs.
 Require Import WhileDB.DenotationalSemantics.
 Require Import WhileDB.Lang.
 Require Import Lia.
@@ -894,60 +896,117 @@ Proof.
       
       etransitivity_1n; [apply app_nil_l | |apply rt_refl_concrete].
       constructor; tauto.
-      (*Stopped here*)
-  + unfold BinRel.concat in H.
-    destruct H as [s1' [? ?] ].
-    specialize (IHc1 _ _ H).
-    specialize (IHc2 _ _ H0).
-    etransitivity_1n; [constructor |].
-    etransitivity; [apply MCS_CCont, IHc1 |].
-    etransitivity_1n; [constructor |].
-    etransitivity; [apply IHc2 |].
-    reflexivity.
-  + destruct H as [H | H]; unfold BinRel.concat in H.
-    - destruct H as [s1' [? ?] ].
-      unfold test1 in H.
-      destruct H as [n [? [? ?] ] ]; subst s1'.
-      pose proof eeval_multi_estep _ _ _ H1.
-      specialize (IHc1 _ _ H0).
-      etransitivity_1n; [constructor |].
-      etransitivity; [apply MCS_ECont, H |].
-      etransitivity_1n; [constructor; tauto |].
+      (*Stopped here 2022-12-9-23:12*)
+  + unfold seq_denote in H.
+  
+      epose proof Rel_Concat_element_concat_rev3 _ _ _  _ _ _ H as HArith1.
+      assert(ceval c1∘ ceval c2 ==ceval c1∘ ceval c2) as HArith1_hlp. reflexivity.
+      specialize (HArith1 HArith1_hlp). clear HArith1_hlp. destruct HArith1 as [tr1 [tr2 [s1a2 [? [? ?]]]]].
+      
+    specialize (IHc1 _ _ _ H1).
+    specialize (IHc2 _ _ _ H2).
+      etransitivity_1n; [apply app_nil_l | constructor |].
+    etransitivity_nn; [apply H0 |apply MCS_CCont, IHc1 |].
+    etransitivity_1n; [apply app_nil_l |constructor |].
+    etransitivity_nn ; [apply app_nil_r |apply IHc2 | apply rt_refl_concrete].
+
+  + 
+  unfold if_denote in H. 
+  epose proof rel_union_or_iff  as HIF1. specialize (HIF1 (test1 (eeval e) ∘ ceval c1) (test0 (eeval e) ∘ ceval c2) s1 s2 tr ).
+	destruct HIF1. apply H0 in H. clear H0 H1.
+
+  destruct H as [H | H].
+    - 
+    	epose proof Rel_Concat_element_concat_rev3 _ _ _  _ _ _ H as HArith1.
+      assert(test1 (eeval e) ∘ ceval c1==test1 (eeval e) ∘ ceval c1) as HArith1_hlp. reflexivity.
+      specialize (HArith1 HArith1_hlp). clear HArith1_hlp. destruct HArith1 as [tr1 [tr2 [s1a2 [? [? ?]]]]].
+    
+      unfold test1 in H1.
+      destruct H1 as [n [? ? ] ]. 
+      pose proof eeval_multi_estep _ _ _ _ _ H1.
+      specialize (IHc1 _ _ _ H2).
+      etransitivity_1n; [apply app_nil_l | constructor |].
+      etransitivity_nn; [apply H0 | apply MCS_ECont,H4 |].
+      etransitivity_1n; [apply app_nil_l | constructor; tauto |].
       apply IHc1.
-    - destruct H as [s1' [? ?] ].
-      unfold test0 in H.
-      destruct H as [? ?]; subst s1'.
-      pose proof eeval_multi_estep _ _ _ H1.
-      specialize (IHc2 _ _ H0).
-      etransitivity_1n; [constructor |].
-      etransitivity; [apply MCS_ECont, H |].
-      etransitivity_1n; [constructor; tauto |].
+    -     	
+    	epose proof Rel_Concat_element_concat_rev3 _ _ _  _ _ _ H as HArith1.
+      assert(test0 (eeval e) ∘ ceval c2==test0 (eeval e) ∘ ceval c2) as HArith1_hlp. reflexivity.
+      specialize (HArith1 HArith1_hlp). clear HArith1_hlp. destruct HArith1 as [tr1 [tr2 [s1a2 [? [? ?]]]]].
+    
+      unfold test0 in H1.
+(*       destruct H1 as [n [? ? ] ].  *)
+      pose proof eeval_multi_estep _ _ _ _ _ H1.
+      specialize (IHc2 _ _ _ H2).
+      etransitivity_1n; [apply app_nil_l | constructor |].
+      etransitivity_nn; [apply H0 | apply MCS_ECont,H3 |].
+      etransitivity_1n; [apply app_nil_l | constructor; tauto |].
       apply IHc2.
-  + etransitivity_1n; [constructor |].
-    unfold BW_LFix in H.
+      (*2022-12-9 22:32:59*)
+  + etransitivity_1n; [apply app_nil_l |constructor |].
+    unfold while_denote,BW_LFix in H.
     unfold omega_lub, oLub_while_fin in H.
     destruct H as [n ?].
-    revert s1 H; induction n; simpl; intros.
-    - unfold bot, Bot_while_fin in H.
+    revert s1 s2 tr H ; induction n;[simpl |]. (* ; simpl; intros. *)
+    { simpl. intros. unfold bot, Bot_while_fin in H.
       contradiction.
-    - destruct H.
-      * destruct H as [s1' [? ?]].
-        destruct H0 as [s1'' [? ?]].
-        specialize (IHn _ H1); clear H1.
-        unfold test1 in H.
-        destruct H as [n0 [? [? ?] ] ]; subst s1'.
-        pose proof eeval_multi_estep _ _ _ H1.
-        etransitivity; [apply MCS_ECont, H |].
-        etransitivity_1n; [constructor; tauto |].
-        specialize (IHc _ _ H0).
-        etransitivity; [apply MCS_CCont, IHc |].
-        etransitivity_1n; [constructor |].
+     }
+    { revert IHn. sets_unfold. intros. 
+    remember  (fun (X : prog_state -> list event -> prog_state -> Prop) (a : prog_state) (a0 : list event) (a1 : prog_state) =>
+       (test1 (eeval e) ∘ ceval c ∘ X) a a0 a1 \/ test0 (eeval e) a a0 a1) as fX.
+
+    pose proof Nat_iter_succ2 (prog_state -> list event -> prog_state -> Prop) n fX bot.
+       rewrite H0 in H. clear H0.
+       subst fX.
+           remember  (fun (X : prog_state -> list event -> prog_state -> Prop) (a : prog_state) (a0 : list event) (a1 : prog_state) =>
+       (test1 (eeval e) ∘ ceval c ∘ X) a a0 a1 \/ test0 (eeval e) a a0 a1) as fX.
+
+    	 destruct H. (* 到这里和原来的证明搭上了边，但不能直接destruct，而需要用引力分拆H  *)
+      *
+          	epose proof Rel_Concat_element_concat_rev3 _ _ _  _ _ _ H as HArith1.
+      assert(test1 (eeval e) ∘ ceval c ∘ Nat.iter n fX bot==test1 (eeval e) ∘ ceval c ∘ Nat.iter n fX bot) as HArith1_hlp. reflexivity.
+      specialize (HArith1 HArith1_hlp). clear HArith1_hlp. destruct HArith1 as [tr1 [tr23 [s1a2 [? [? ?]]]]].
+      
+      epose proof Rel_Concat_element_concat_rev3 _ _ _  _ _ _ H2 as HArith1.
+      assert(ceval c ∘ Nat.iter n fX bot== ceval c ∘ Nat.iter n fX bot) as HArith1_hlp. reflexivity.
+      specialize (HArith1 HArith1_hlp). clear HArith1_hlp. destruct HArith1 as [tr2 [tr3 [s1b2 [? [? ?]]]]].
+
+				clear H  H2.
+
+        specialize (IHn _ _ _ H5); clear H5.
+        unfold test1 in H1. destruct H1 as [n0 [? ?]].
+(*         destruct H as [n0 [? [? ?] ] ]; subst s1'. *)
+        pose proof eeval_multi_estep _ _ _ _ _ H.
+        etransitivity_nn; [apply H0 |apply MCS_ECont, H2 |].
+        etransitivity_1n; [apply app_nil_l|constructor; tauto |].
+        specialize (IHc _ _ _  H4).
+        etransitivity_nn; [apply H3|apply MCS_CCont, IHc |].
+        etransitivity_1n; [apply app_nil_l |constructor |].
         apply IHn.
-      * destruct H as [? ?].
-        subst s2.
-        pose proof eeval_multi_estep _ _ _ H0.
-        etransitivity; [apply MCS_ECont, H |].
-        etransitivity_1n; [constructor; tauto |].
-        reflexivity.
+      * unfold test0 in H.
+        pose proof eeval_multi_estep _ _ _ _ _ H.
+        etransitivity_nn; [apply app_nil_r|apply MCS_ECont, H0 |].
+        etransitivity_1n; [apply app_nil_l|constructor; tauto |apply rt_refl_concrete].
+     }
+     + unfold write_int_denote, write_int_denote_aux in H. destruct H.
+               	epose proof Rel_Concat_element_concat_rev3 _ _ _  _ _ _ H as HArith1.
+      assert((eeval e x ∘ write_int_action_denote x)==eeval e x ∘ write_int_action_denote x) as HArith1_hlp. reflexivity.
+      specialize (HArith1 HArith1_hlp). clear HArith1_hlp. destruct HArith1 as [tr1 [tr2 [s1a2 [? [? ?]]]]].
+      pose proof eeval_multi_estep _ _ _ _ _ H1.
+      unfold write_int_action_denote in H2. destruct H2. subst s1a2.
+      etransitivity_1n; [apply app_nil_l|constructor; tauto |].
+      etransitivity_nn; [apply H0|apply MCS_ECont, H3 |].
+      subst tr2. 
+      etransitivity_1n; [apply app_nil_r |constructor |apply rt_refl_concrete].
+     + unfold write_char_denote, write_char_denote_aux in H. destruct H.
+               	epose proof Rel_Concat_element_concat_rev3 _ _ _  _ _ _ H as HArith1.
+      assert((eeval e x ∘ write_char_action_denote x)==eeval e x ∘ write_char_action_denote x) as HArith1_hlp. reflexivity.
+      specialize (HArith1 HArith1_hlp). clear HArith1_hlp. destruct HArith1 as [tr1 [tr2 [s1a2 [? [? ?]]]]].
+      pose proof eeval_multi_estep _ _ _ _ _ H1.
+      unfold write_char_action_denote in H2. destruct H2. subst s1a2.
+      etransitivity_1n; [apply app_nil_l|constructor; tauto |].
+      etransitivity_nn; [apply H0|apply MCS_ECont, H3 |].
+      subst tr2. 
+      etransitivity_1n; [apply app_nil_r |constructor |apply rt_refl_concrete].
 Qed.
 
