@@ -390,6 +390,7 @@ Proof.
       tauto.
 Qed.
 
+
 Definition write_int_action_denote (*Here the value assigned is an Int64 literal value. *)
              (n: int64)
              (s1: prog_state)
@@ -441,3 +442,26 @@ Fixpoint ceval (c: com): prog_state -> list event -> prog_state -> Prop :=
   | CWriteChar e => write_char_denote (eeval e)
   end.
 
+
+Theorem while_denote_is_fix: forall e c,
+  ((test1 (eeval e) ∘
+      (ceval c) ∘
+      (ceval (CWhile e c))) ∪
+    test0 (eeval e) ==
+    (ceval (CWhile e c)))%sets.
+Proof.
+  intros.
+  assert (mono (fun X => (test1 (eeval e) ∘ (ceval c)∘ X) ∪ test0 (eeval e)) /\
+          continuous (fun X => (test1 (eeval e) ∘ (ceval c) ∘ X) ∪ test0 (eeval e))).
+  {
+    apply union_right2_mono_and_continuous.
+    apply Rels_concat_left_mono_and_continuous.
+    apply Rels_concat_left_mono_and_continuous.
+    split.
+    + apply id_mono.
+    + apply id_continuous.
+  }
+  destruct H.
+  apply (BW_LFix_is_fix (fun X => (test1 (eeval e) ∘ (ceval c)∘ X) ∪ test0 (eeval e)));
+  tauto.
+Qed.

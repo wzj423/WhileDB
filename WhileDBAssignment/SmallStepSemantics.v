@@ -327,7 +327,8 @@ Proof.
   {
     intros. apply H0. apply H0 in H1. apply ES_Cont. auto.
   }
-  assert (forall n tr el1 s1 el2 s2 k, nsteps estep n (el1, s1) tr (el2, s2) -> nsteps estep n (EL_Cont el1 k, s1) tr (EL_Cont el2 k, s2) ).
+  assert (forall n tr el1 s1 el2 s2 k, nsteps estep n (el1, s1) tr (el2, s2)
+   -> nsteps estep n (EL_Cont el1 k, s1) tr (EL_Cont el2 k, s2) ).
   {
     induction n.
     {
@@ -374,7 +375,8 @@ Proof.
   {
     intros. apply H0. apply HH0 in H1. apply CS_ECont. auto.
   }
-  assert (forall n tr el1 s1 el2 s2 k, nsteps estep n (el1, s1) tr (el2, s2) -> nsteps cstep n (CL_ECont el1 k, s1) tr (CL_ECont el2 k, s2) ).
+  assert (forall n tr el1 s1 el2 s2 k, nsteps estep n (el1, s1) tr (el2, s2) -> 
+  			nsteps cstep n (CL_ECont el1 k, s1) tr (CL_ECont el2 k, s2) ).
   {
     induction n.
     {
@@ -504,14 +506,17 @@ Proof.
         etransitivity_nn; [apply H2 | apply MES_Cont, IHe1 |].
         etransitivity_1n; [apply app_nil_l | apply ES_BinopR_NSC; simpl; tauto |].
         etransitivity_nn; [apply app_nil_r | apply MES_Cont, IHe2 |].
-        etransitivity_1n. apply app_nil_l. constructor. unfold binop_compute. unfold bool_compute. right. split;eauto. apply rt_refl_concrete.
+        etransitivity_1n. apply app_nil_l. constructor. unfold binop_compute. 
+        unfold bool_compute. right. split;eauto. apply rt_refl_concrete.
         }
       {
        destruct H as [? ? ].
        
        epose proof Rel_Concat_element_concat_rev2 as HOR1.
-      specialize (HOR1 (eeval e1 (Int64.repr 0))  (eeval e2  (Int64.repr 0) )  (eeval e1 (Int64.repr 0) ∘ eeval e2  (Int64.repr 0))  s1 s2 tr).
-      assert(eeval e1 (Int64.repr 0) ∘ eeval e2 (Int64.repr 0) == eeval e1 (Int64.repr 0) ∘ eeval e2  (Int64.repr 0)) as HOR1_hlp. reflexivity.
+      specialize (HOR1 (eeval e1 (Int64.repr 0))  (eeval e2  (Int64.repr 0) )  
+      	(eeval e1 (Int64.repr 0) ∘ eeval e2  (Int64.repr 0))  s1 s2 tr).
+      assert(eeval e1 (Int64.repr 0) ∘ eeval e2 (Int64.repr 0) == 
+      eeval e1 (Int64.repr 0) ∘ eeval e2  (Int64.repr 0)) as HOR1_hlp. reflexivity.
       specialize (HOR1 HOR1_hlp H). clear HOR1_hlp. destruct HOR1 as [tr1 [tr2 [s1_2 [? [? ?]]]]].
        
         specialize (IHe1 _ _ _ _ H2).
@@ -875,11 +880,13 @@ Proof.
       destruct H as [n1 [n2 ] ].
       
       epose proof Rel_Concat_element_concat_rev3 _ _ _  _ _ _ H as HArith1.
-      assert(eeval e1 n1 ∘ eeval e2 n2 ∘ asgn_deref_action_denote n1 n2 ==eeval e1 n1 ∘ eeval e2 n2 ∘ asgn_deref_action_denote n1 n2) as HArith1_hlp. reflexivity.
+      assert(eeval e1 n1 ∘ eeval e2 n2 ∘ asgn_deref_action_denote n1 n2 ==
+      eeval e1 n1 ∘ eeval e2 n2 ∘ asgn_deref_action_denote n1 n2) as HArith1_hlp. reflexivity.
       specialize (HArith1 HArith1_hlp). clear HArith1_hlp. destruct HArith1 as [tr1 [tr4 [s1a2 [? [? ?]]]]].
       
       epose proof Rel_Concat_element_concat_rev3 _ _ _  _ _ _ H2 as HArith1.
-      assert(eeval e2 n2 ∘ asgn_deref_action_denote n1 n2 == eeval e2 n2 ∘ asgn_deref_action_denote n1 n2) as HArith1_hlp. reflexivity.
+      assert(eeval e2 n2 ∘ asgn_deref_action_denote n1 n2 == 
+      eeval e2 n2 ∘ asgn_deref_action_denote n1 n2) as HArith1_hlp. reflexivity.
       specialize (HArith1 HArith1_hlp). clear HArith1_hlp. destruct HArith1 as [tr2 [tr3 [s1b2 [? [? ?]]]]].
       
       
@@ -1054,12 +1061,14 @@ Definition  eeval_to_D
 (*int64_1: 之前的expr_loc求得的值
 最后总表达式的值是int64_2
 prog_state_1: expr_lock求值完成后的state
-接下来，求值expr_ectx，经过了 list event 的 trace 达到了另外的一个 prop_state2,获得了最后的返回值 *)
+接下来，求值expr_ectx，
+经过了 list event 的 trace 达到了另外的一个 prop_state2,获得了最后的返回值 *)
 Definition ek_eval (k: expr_ectx):
   int64 -> int64-> prog_state -> list event -> prog_state  -> Prop :=
   match k with
   | KBinopL op e2 => fun n1 n s1 tr s2 =>
-      binop_compute_step1 op n1 ((eeval_to_D (eeval e2)) s1 tr s2) n (*这里出错了！当n1产生短路时，s1 tr s2实际可取任意值！！！*)
+      binop_compute_step1 op n1 ((eeval_to_D (eeval e2)) s1 tr s2) n
+      	 (*这里出错了！当n1产生短路时，s1 tr s2实际可取任意值！！！*)
   | KBinopR n1 op => fun n2 n s1 tr s2 =>
   		s1=s2 /\ tr=nil /\
       binop_compute op n1 n2 n
@@ -1304,7 +1313,9 @@ Proof.
 	{ (*Rule 4*) simpl  in *; intros. destruct H0 as [? [? ?]]. subst. exists n1, nil,nil,s3. repeat split;auto.
 		unfold short_circuit in H. destruct op; simpl in *; try contradiction;left;repeat split;auto;destruct H;repeat auto.
 		}
-  {  (*Rule 5*)destruct op; simpl in *; try [>intros;destruct H0 as [n2 [? [? [? [? [? [? [? ?]]] ] ]]]]; exists n1,nil, tr2,s;subst; repeat split;auto;
+  {  (*Rule 5*)destruct op; simpl in *; 
+  			try [>intros;destruct H0 as [n2 [? [? [? [? [? [? [? ?]]] ] ]]]]; 
+  			exists n1,nil, tr2,s;subst; repeat split;auto;
   			exists n2;rewrite app_nil_r; auto].
   		+ intros. destruct H0 as [n2 [? [? [? [? [? [? [? ?]]] ] ]]]]. exists n1,nil, tr2,s.  subst. repeat split;auto. 
   				unfold bool_compute in H5. destruct H5 as [[? ?]|[? ?]].
@@ -1415,3 +1426,167 @@ Proof.
     specialize (Htarget s1 el1 tr0 tr1 tr s3 s2 el3 n H2 IHx).
     symmetry in H1.  specialize (Htarget H1). tauto.
 Qed.
+
+
+
+(** 下面定义_[com_ectx]_与_[expr_com_ectx]_的指称。*)
+Definition ck_eval (k: com_ectx): prog_state -> list event -> prog_state -> Prop :=
+  match k with
+  | KSeq c => (ceval c) (*(ceval c).fin*)
+  | KWhileBody e c => (ceval (CWhile e c))
+  end.
+
+Definition eck_eval (k: expr_com_ectx):
+  int64 -> prog_state -> list event -> prog_state -> Prop :=
+  match k with
+  | KWhileCond e c =>
+      fun n s1 tr s2 =>
+        Int64.signed n <> 0 /\
+          ((ceval c) ∘ (ceval (CWhile e c))) s1 tr s2 \/
+        n = Int64.repr 0 /\ Rels.id s1 tr s2
+  | KIf c1 c2 =>
+      fun n s1 tr s2 =>
+        Int64.signed n <> 0 /\ ((ceval c1) s1 tr s2) \/
+        n = Int64.repr 0 /\ ((ceval c2) s1 tr s2)
+  | KAsgnVar X =>
+      fun n s1 tr s2 =>
+        s2.(vars) X = n /\
+        (forall Y, X <> Y -> s1.(vars) Y = s2.(vars) Y) /\
+        (forall p, s1.(mem) p = s2.(mem) p) /\ tr=nil	
+  | KAsgnMemL e2 =>
+      fun n1 s1 tr s3 =>
+        exists n2 s2,
+          eeval e2 n2 s1 tr s2 /\
+          s2.(mem) n1 <> None /\
+          s3.(mem) n1 = Some n2 /\
+          (forall X, s2.(vars) X = s3.(vars) X) /\
+          (forall q, n1 <> q -> s2.(mem) q = s3.(mem) q)
+  | KAsgnMemR n1 =>
+      fun n2 s1 tr s2 =>
+        s1.(mem) n1 <> None /\
+        s2.(mem) n1 = Some n2 /\
+        (forall X, s1.(vars) X = s2.(vars) X) /\
+        (forall q, n1 <> q -> s1.(mem) q = s2.(mem) q) /\ tr=nil
+	| KWriteInt =>
+		fun n1 s1 tr s2=>
+			s1=s2 /\ tr = (EV_WriteInt n1)::nil
+	| KWriteChar =>
+		fun n1 s1 tr s2=>
+			s1=s2 /\ tr = (EV_WriteChar n1)::nil
+  end.
+  
+
+Fixpoint cl_eval (cl: com_loc): prog_state -> list event->prog_state -> Prop :=
+  match cl with
+  | CL_Finished => Rels.id
+  | CL_FocusedCom c => (ceval c)
+  | CL_ECont el k => fun s1 tr s3 => exists n tr1 s2 tr2, el_eval el n s1 tr1 s2  /\ eck_eval k n s2 tr2 s3 /\ tr1++tr2 =tr
+  | CL_CCont cl0 k => (cl_eval cl0) ∘ (ck_eval k)
+  end.
+  
+
+  
+Lemma cstep_sound: forall s1  cl1 tr1 tr2 tr12 s2 s3 cl2,
+  cstep (cl1,s1) tr1 (cl2,s2) ->
+  cl_eval cl2 s2 tr2 s3 ->
+  tr1++tr2=tr12 ->
+  cl_eval cl1 s1 tr12 s3.
+Proof.
+  intros. revert H1 H0. revert tr12 tr2 s3.
+	induction_step2 H.
+  + simpl in *; intros. unfold asgn_var_denote.  unfold asgn_var_action_denote. rel_unfold. simpl in *. intros.
+  destruct H0 as[ n [tr1 [s2 [tr3 ?]]]]. exists n. exists  s2. exists  tr12,nil.  repeat split;try tauto.
+  apply app_nil_r.  destruct H as [? [? ?]]. destruct H0 as [? [? [?]]]. subst tr3. rewrite app_nil_r in H2.
+  subst tr12 tr2. tauto. 
+  + simpl in *; intros. revert H3. rel_unfold. intros. destruct H3. subst tr2 tr12 s3. exists n,nil,s1,nil. tauto.
+  + simpl in *; intros. unfold asgn_deref_denote, asgn_deref_action_denote. rel_unfold. simpl.
+  destruct H0 as[ n [tr2a3 [s2 [tr2b3 ?]]]]. 
+  destruct H as [? [?  ]]. destruct H0 as [n2 [? [? [? [? ?]]]]].
+  exists n. exists n2. exists s2, tr2a3. exists tr2b3. repeat split; try tauto. subst tr2;auto.
+  exists x. exists tr2b3,nil. repeat split;try tauto. apply app_nil_r.
+  + simpl in *; intros.  destruct H0 as[ n [tr2a3 [s2 [tr2b3 ?]]]]. 
+  destruct H as [? [?  ]]. destruct H0 as [n2 [? [? [?]]]]. subst tr2b3. rewrite app_nil_r in H2. subst tr2a3 tr12.
+  exists n1,nil, s,tr2. repeat split;try tauto;auto. exists n. repeat split;try tauto;auto.
+  exists s2. tauto.
+  + simpl in *; intros. revert_component H4. rel_unfold. intros. destruct H4. subst tr2 tr12 s3. exists n2,nil,s1,nil.
+  	repeat split;try tauto;auto.
+
+  + simpl in *; intros. revert_component H0. rel_unfold. intros. destruct H0 as [s2 [tra1 [tra2]]]. 
+  unfold seq_denote. rel_unfold. exists s2,tra1,tra2. congruence.
+  + simpl in *; intros. rel_unfold. exists s,nil,tr2. subst tr2. rewrite app_nil_l. tauto. 
+  + simpl in *; intros. unfold if_denote. rel_unfold. destruct H0 as [? [? [? [? [? [?]]]]]].
+  destruct H0 as [[? ?]|[? ?]].
+    - left.
+      exists x1; simpl; unfold test1.
+      exists x0,x2. subst tr12.   	repeat split;try tauto;auto.
+      exists x.   	repeat split;try tauto;auto.
+    - right.
+      exists x1; simpl; unfold test0.
+      exists x0,x2. subst tr12.   	repeat split;try tauto;auto.
+      subst x.   	repeat split;try tauto;auto.
+  + simpl in *; intros. subst tr2. simpl in *. exists n,nil,s,tr12.  	repeat split;try tauto;auto.
+  + simpl in *; intros. subst tr2. simpl in *. exists n,nil,s,tr12.  	repeat split;try tauto;auto.
+  + simpl in *; intros. revert_component H0. rel_unfold. intros. destruct H0 as [n [tr1 [s2 [tr3]]]].
+      (*Stopped here to prove while_denote_is_fix*) 
+    destruct H as [? [? ]].    
+    apply (while_denote_is_fix e c).
+(*     destruct H as [? [? | ?] ]. *)
+ 		destruct H0 as [[? ?] |? ].
+ 		subst tr12.
+    - left. rel_unfold.
+      unfold test1.
+      destruct H3 as [s2_3 [ tr2a3 [tr2b3 [? [? ?]]] ]].
+      exists s2. exists tr1,tr3. split;auto. split; [exists n;tauto| exists s2_3,tr2a3,tr2b3;tauto].
+    - right.
+    unfold test0. destruct H0 as[? [? ?]]. subst tr3 tr12 s3. rewrite app_nil_r in H2. subst.
+    tauto.
+  + simpl in *; intros. revert_component H0. rel_unfold. intros. simpl in *.
+  	destruct H0 as [s1 [tr1 [tr3 ]]]. destruct H0 as [? [? ?]].
+  	exists n, nil. exists s, tr2. subst. repeat split;try tauto;try auto.
+  	left. split;auto. exists s1,tr1,tr3. tauto.
+  + simpl in *; intros.  revert_component H0. rel_unfold. intros. simpl in *. simpl in *. destruct H0.
+
+  	 exists n,nil. exists s.    exists tr2. subst tr12. split. tauto. split;[ | apply app_nil_l].
+  	 right;tauto.
+
+  +  intros.  rewrite app_nil_l in H1.  subst tr12.
+  		revert H0. simpl. rel_unfold. intros.
+  		exists s,nil,tr2. repeat split;try tauto.
+  		apply (while_denote_is_fix e c). rel_unfold. 
+  		destruct H0 as [? [? [ ? [? [? ?] ]]]].
+      destruct H0 as [?]. destruct H0 as [?|? ].
+      - unfold test1. left. exists x1,x0,x2. split;auto. split. destruct H0 as [? [? [? [? ?]]]]. exists x. tauto. tauto.
+      - unfold test0. right. destruct H0 as [? [? ?]]. subst. rewrite app_nil_r. auto.
+      
+   + intros. rewrite app_nil_l in H1. subst tr12. simpl in *. unfold write_int_denote. unfold write_int_denote_aux.
+   rel_unfold. destruct H0 as [? [? [? [? ?]]]]. destruct H as [? [[? ?] ?]]. subst. exists x,s3,x0,(EV_WriteInt x :: nil).
+   repeat split;auto.
+   
+   + simpl in *. rel_unfold. intros. destruct H0. subst. exists n,nil,s3,(EV_WriteInt n :: nil). tauto.
+   + intros. rewrite app_nil_l in H1. subst tr12. simpl in *. unfold write_char_denote. unfold write_char_denote_aux.
+   rel_unfold. destruct H0 as [? [? [? [? ?]]]]. destruct H as [? [[? ?] ?]]. subst. exists x,s3,x0,(EV_WriteChar x :: nil).
+   repeat split;auto.
+   + simpl in *. rel_unfold. intros. destruct H0. subst. exists n,nil,s3,(EV_WriteChar n :: nil). tauto.
+  + simpl in *. intros.   destruct H0 as [? [? [? [? [? [? ?]]]]]].
+  remember (tr++x0) as trx0 eqn: Hhelp. symmetry in Hhelp.
+  epose proof estep_sound _ _ _ _ _ _ _ _ _ H H0 Hhelp. exists x. exists trx0. exists x1. exists x2.
+  repeat split;auto. subst trx0. rewrite <- Coq.Lists.List.app_assoc. congruence.
+  + simpl in *. rel_unfold. intros. 
+    destruct H0 as [s' [? [? [?  [? ?] ] ]]]. specialize (IHcstep s2 cl2 s1 cl1).
+  			assert ( (cl1, s1) = (cl1, s1)). auto. assert ( (cl2, s2) = (cl2, s2)). auto. 
+  			specialize (IHcstep H4 H5). clear H4 H5.
+  			remember (tr++x) as tr01 eqn:Htr.
+  			assert(tr01++x0=tr12). { rewrite Htr. rewrite <- ((Coq.Lists.List.app_assoc)).    congruence. }
+  			
+  			specialize (IHcstep tr01 x  s'). symmetry in Htr. specialize (IHcstep Htr H2).
+  			exists s' ,tr01,x0.  tauto.
+Qed.
+
+
+
+
+
+
+
+
+
