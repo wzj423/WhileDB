@@ -1584,9 +1584,39 @@ Qed.
 
 
 
-
-
-
-
-
-
+(** 最后要证明多步关系到指称语义的推导，只需对步数归纳即可。*)
+Lemma multi_cstep_ceval: forall s1 c tr s2,
+  multi_cstep (CL_FocusedCom c,s1) tr (CL_Finished,s2) ->
+  ceval c s1 tr s2.
+Proof.
+  intros.
+assert (cl_eval (CL_FocusedCom c) s1 tr s2 ->  (ceval c) s1 tr s2). {
+    simpl;auto.
+}
+ assert (cl_eval (CL_Finished ) s2 nil s2). {
+    simpl. rel_unfold. tauto.
+  }
+  apply H0; clear H0.
+  set (cl1 := CL_FocusedCom c) in *; clearbody cl1.
+  set (cl2 := CL_Finished) in *; clearbody cl2.
+  
+  unfold multi_cstep in H.
+  unfold clos_refl_trans in H.
+  unfold Sets.omega_union in H.
+  simpl in H. destruct H.
+  revert H1. revert H. revert tr s1 s2 cl1 cl2.
+	induction x;intros.
+	+ epose proof nsteps_O_id cstep.  revert H H1 H0. sets_unfold. intros. 
+		specialize (H0 (cl1,s1) tr (cl2,s2)). unfold iff in H0;destruct H0. specialize (H0 H). clear H2.
+		revert H0. simpl. rel_unfold. intros. destruct H0;subst. injection H2. intros. subst. tauto.
+	+       assert( ((S x)%nat > O)%nat) as Hn1. lia.
+				assert ( ((S x)-1 = x)%nat) as Hn2. lia.
+    epose proof nsteps_1n cstep (S x) (cl1,s1) (cl2,s2) tr Hn1 H.
+    destruct H0 as [tr0 [tr1 [(cl3,s3)  [? [? ?] ]]]]. rewrite Hn2 in H3.
+    
+    specialize (IHx _ _ _ _ _ H3 H1).
+    
+    epose proof cstep_sound as Htarget.
+    specialize (Htarget s1 cl1 tr0 tr1 tr s3 s2 cl3 H2 IHx). 
+    symmetry in H0.  specialize (Htarget H0). tauto.
+Qed.
